@@ -13,7 +13,7 @@ import {
   Store,
   LogOut,
   ChevronDown,
-  BadgePercent
+  MapPin
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -37,7 +37,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const { itemCount, setIsCartOpen } = useCart();
   const {
-    isAuthenticated,
     user,
     customerUser,
     isCustomerAuthenticated,
@@ -46,7 +45,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     openLoginModal
   } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const handleNavClick = (catSlug?: string) => {
@@ -72,44 +70,57 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-[#FFFEF7]/95 backdrop-blur-md border-b border-[#E6EBDD] transition-all">
-      {/* Top Banner Notice */}
-      <div className="bg-[#138443] text-white text-xs font-medium py-1.5 px-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center justify-center bg-[#8CC63E] text-[#183D2B] text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+      {/* Top Banner Notice - Hidden or Compact on Mobile */}
+      <div className="bg-[#138443] text-white text-[11px] sm:text-xs font-medium py-1 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="inline-flex items-center justify-center bg-[#8CC63E] text-[#183D2B] text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
               Direct Supply
             </span>
-            <span>Real Fruit Beverages by JDM Fruit Products Pvt. Ltd., Hyderabad</span>
+            <span className="truncate">JDM Fruit Products, Hyderabad</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
             <span className="hidden sm:inline-flex items-center gap-1 text-[#FFC928]">
               <Sparkles className="w-3.5 h-3.5" /> Free Retail Delivery on ₹100+
             </span>
             <button
               onClick={onOpenTrackingModal}
-              className="hover:underline flex items-center gap-1 text-white/90 hover:text-white"
+              className="hover:underline flex items-center gap-1 text-white/90 hover:text-white text-[11px]"
             >
-              <Truck className="w-3.5 h-3.5" /> Track Order
+              <Truck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FFC928]" />
+              <span className="hidden xs:inline">Track Order</span>
             </button>
-            <a href="tel:+919849012345" className="hidden md:flex items-center gap-1 text-white/90 hover:text-white">
+            <a
+              href="tel:+919849012345"
+              className="hidden md:flex items-center gap-1 text-white/90 hover:text-white"
+            >
               <PhoneCall className="w-3.5 h-3.5" /> +91 98490 12345
             </a>
           </div>
         </div>
       </div>
 
-      {/* Main Navbar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 gap-4">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <a href="#" className="flex items-center gap-2.5 group">
+      {/* Main Navbar Bar */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">
+          {/* Logo & Location Tag */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => { onSelectCategory('all'); scrollToSection('hero'); }}
+              className="flex items-center gap-2 group text-left"
+            >
               <img
                 src="/images/juci-cool-logo.png"
                 alt="Juci Cool Logo"
-                className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105"
+                className="h-10 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105"
               />
-            </a>
+            </button>
+
+            {/* Mobile Location Badge (E-commerce app style) */}
+            <div className="hidden xs:flex md:hidden items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[10px] text-[#138443] font-semibold">
+              <MapPin className="w-3 h-3 text-[#138443]" />
+              <span className="truncate max-w-[90px]">Hyderabad Factory</span>
+            </div>
           </div>
 
           {/* Desktop Nav Links */}
@@ -159,8 +170,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Actions & Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            {/* Search Input on Desktop */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Desktop Search Input */}
             <div className="relative hidden md:block">
               <input
                 type="text"
@@ -172,24 +183,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="w-4 h-4 text-[#68756B] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Mobile Search Toggle */}
-            <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="md:hidden p-2 text-[#183D2B] hover:text-[#138443] hover:bg-[#E6EBDD]/50 rounded-full"
-              aria-label="Search"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-
             {/* Cart Button */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2.5 bg-white border border-[#E6EBDD] hover:border-[#138443] text-[#183D2B] rounded-full shadow-sm hover:shadow-md transition-all flex items-center justify-center group"
+              className="relative p-2 sm:p-2.5 bg-white border border-[#E6EBDD] hover:border-[#138443] text-[#183D2B] rounded-full shadow-sm hover:shadow-md transition-all flex items-center justify-center group active:scale-95"
               title="Shopping Cart"
             >
-              <ShoppingBag className="w-5 h-5 text-[#138443] group-hover:scale-110 transition-transform" />
+              <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-[#138443] group-hover:scale-110 transition-transform" />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#F7941D] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                <span className="absolute -top-1 -right-1 bg-[#F7941D] text-white text-[10px] sm:text-[11px] font-bold w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm">
                   {itemCount}
                 </span>
               )}
@@ -200,25 +202,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="relative">
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className={`flex items-center gap-2 py-1.5 px-3 rounded-full border text-xs font-bold transition-all shadow-sm ${
+                  className={`flex items-center gap-1.5 py-1 sm:py-1.5 px-2.5 sm:px-3 rounded-full border text-[11px] sm:text-xs font-bold transition-all shadow-sm ${
                     isDealerRetailer
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100'
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                       : customerUser.role === 'admin'
-                      ? 'bg-emerald-100 border-emerald-400 text-emerald-900 hover:bg-emerald-200'
-                      : 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
+                      ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                      : 'bg-amber-50 border-amber-300 text-amber-800'
                   }`}
                 >
                   {customerUser.role === 'admin' ? (
-                    <ShieldCheck className="w-4 h-4 text-[#138443]" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#138443]" />
                   ) : isDealerRetailer ? (
-                    <Store className="w-4 h-4 text-[#138443]" />
+                    <Store className="w-3.5 h-3.5 text-[#138443]" />
                   ) : (
-                    <UserIcon className="w-4 h-4 text-[#F7941D]" />
+                    <UserIcon className="w-3.5 h-3.5 text-[#F7941D]" />
                   )}
-                  <span className="max-w-[120px] truncate">
+                  <span className="max-w-[70px] sm:max-w-[120px] truncate">
                     {customerUser.fullName.split(' ')[0]}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                  <ChevronDown className="w-3 h-3 opacity-70" />
                 </button>
 
                 {/* Dropdown Menu */}
@@ -280,18 +282,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={() => openLoginModal('dealer')}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full font-bold text-xs transition-all border border-[#138443]/30 bg-white hover:bg-emerald-50 text-[#138443] shadow-sm hover:shadow"
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full font-bold text-[11px] sm:text-xs transition-all border border-[#138443]/30 bg-white hover:bg-emerald-50 text-[#138443] shadow-sm active:scale-95"
                 title="Login with your account"
               >
-                <UserIcon className="w-4 h-4 text-[#138443]" />
+                <UserIcon className="w-3.5 h-3.5 text-[#138443]" />
                 <span>Login</span>
               </button>
             )}
 
-            {/* Wholesale / Bulk Enquiry Button (HIGHLIGHTED) */}
+            {/* Wholesale / Bulk Enquiry Button (Desktop) */}
             <button
               onClick={onOpenBulkModal}
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-semibold text-xs tracking-wide uppercase transition-all shadow-md bg-gradient-to-r from-[#138443] to-[#0d6131] hover:from-[#0d6131] hover:to-[#138443] text-white border border-[#FFC928]/40 hover:scale-[1.02] active:scale-[0.98]"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs tracking-wide uppercase transition-all shadow-md bg-gradient-to-r from-[#138443] to-[#0d6131] hover:from-[#0d6131] hover:to-[#138443] text-white border border-[#FFC928]/40 hover:scale-[1.02] active:scale-[0.98]"
             >
               <Building2 className="w-4 h-4 text-[#FFC928]" />
               <span>Get Bulk Prices</span>
@@ -300,142 +302,99 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Menu Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-[#183D2B] hover:bg-[#E6EBDD]/50 rounded-lg"
+              className="lg:hidden p-1.5 text-[#183D2B] hover:bg-[#E6EBDD]/50 rounded-lg active:scale-95"
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Search Bar Dropdown */}
-        {showSearch && (
-          <div className="md:hidden py-2 px-1 border-t border-[#E6EBDD]">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search flavors, drinks, candy..."
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-[#E6EBDD] bg-white focus:outline-none focus:border-[#138443]"
-                autoFocus
-              />
-              <Search className="w-4 h-4 text-[#68756B] absolute left-3 top-1/2 -translate-y-1/2" />
-            </div>
+        {/* E-Commerce App Native Search Bar on Mobile */}
+        <div className="md:hidden pb-2.5 pt-0.5">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search mango drinks, candies, jellies..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-[#E6EBDD] bg-white text-[#183D2B] placeholder-[#68756B] shadow-inner focus:outline-none focus:border-[#138443] focus:ring-1 focus:ring-[#138443] transition-all"
+            />
+            <Search className="w-4 h-4 text-[#138443] absolute left-3 top-1/2 -translate-y-1/2" />
+            {searchTerm && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#68756B] hover:text-[#183D2B]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#E6EBDD] bg-[#FFFEF7] px-4 pt-3 pb-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
-          <div className="flex flex-col space-y-2 font-medium text-sm text-[#183D2B]">
+        <div className="lg:hidden border-t border-[#E6EBDD] bg-[#FFFEF7] px-4 pt-3 pb-6 space-y-3 animate-in slide-in-from-top-2 duration-200 shadow-xl">
+          <div className="flex flex-col space-y-1 font-medium text-xs text-[#183D2B]">
             <button
               onClick={() => { onSelectCategory('all'); scrollToSection('hero'); }}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 font-bold"
             >
-              Home
+              🏠 Home
             </button>
             <button
               onClick={() => handleNavClick()}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 font-semibold"
             >
-              All Products
+              🛍️ All Products Catalog
             </button>
             <button
               onClick={() => handleNavClick('mango-drinks')}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60 flex items-center gap-2"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
             >
-              <span className="w-2 h-2 rounded-full bg-[#FFC928]"></span> Mango Drinks
+              <span className="w-2 h-2 rounded-full bg-[#FFC928]"></span> Mango Drinks & Juices
             </button>
             <button
               onClick={() => handleNavClick('fruit-drinks')}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60 flex items-center gap-2"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
             >
               <span className="w-2 h-2 rounded-full bg-[#8CC63E]"></span> Fruit Drinks & Pulps
             </button>
             <button
               onClick={() => handleNavClick('candy')}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60 flex items-center gap-2"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
             >
-              <span className="w-2 h-2 rounded-full bg-[#F7941D]"></span> Candy & Fruit Jellies
+              <span className="w-2 h-2 rounded-full bg-[#F7941D]"></span> Candies & Fruit Jellies
             </button>
             <button
               onClick={() => scrollToSection('about-section')}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60"
             >
-              About JDM Fruit Products
+              ℹ️ About JDM Fruit Products
             </button>
             <button
               onClick={() => scrollToSection('contact-section')}
-              className="text-left px-3 py-2 rounded-md hover:bg-[#E6EBDD]/60"
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60"
             >
-              Contact Hyderabad Office
+              📞 Contact Hyderabad Office
             </button>
           </div>
 
-          <div className="pt-3 border-t border-[#E6EBDD] flex flex-col gap-2">
-            {isCustomerAuthenticated && customerUser ? (
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[#183D2B]">{customerUser.fullName}</div>
-                  <div className="text-[10px] text-emerald-800 font-bold uppercase">
-                    {customerUser.role === 'admin'
-                      ? 'Administrator'
-                      : isDealerRetailer
-                      ? 'Dealer Account (Bulk Rates)'
-                      : 'General Customer'}
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    customerLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="px-2.5 py-1 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-lg"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  openLoginModal('dealer');
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-emerald-50 border border-emerald-300 text-[#138443]"
-              >
-                <UserIcon className="w-4 h-4 text-[#138443]" />
-                <span>Login / Account</span>
-              </button>
-            )}
-
-            {(customerUser?.role === 'admin' || user?.role === 'admin') && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenAdminPortal();
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-emerald-100 text-[#138443] border border-emerald-300"
-              >
-                <ShieldCheck className="w-4 h-4 text-[#138443]" />
-                <span>Open Admin Console</span>
-              </button>
-            )}
-
+          <div className="pt-2 border-t border-[#E6EBDD] flex flex-col gap-2">
             <button
               onClick={() => { setMobileMenuOpen(false); onOpenBulkModal(); }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-[#138443] text-white shadow"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-[#138443] text-white shadow-md"
             >
               <Building2 className="w-4 h-4 text-[#FFC928]" />
-              <span>Wholesale / Bulk Orders</span>
+              <span>Wholesale Bulk Quotation Request</span>
             </button>
             <button
               onClick={() => { setMobileMenuOpen(false); onOpenTrackingModal(); }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm border border-[#E6EBDD] bg-white text-[#183D2B]"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs border border-[#E6EBDD] bg-white text-[#183D2B] font-semibold"
             >
               <Truck className="w-4 h-4 text-[#138443]" />
-              <span>Track Order Status</span>
+              <span>Track Order / Enquiry Status</span>
             </button>
           </div>
         </div>

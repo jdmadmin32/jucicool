@@ -190,19 +190,22 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-[#E6EBDD] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full max-h-[94vh] flex flex-col overflow-hidden shadow-2xl border border-[#E6EBDD] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+        {/* Mobile handle pill */}
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-2.5 sm:hidden shrink-0"></div>
+
         {/* Header */}
-        <div className="p-5 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between">
+        <div className="p-4 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-[#FFC928]/20 text-[#183D2B] rounded-xl border border-[#FFC928]/40">
-              <Building2 className="w-5 h-5 text-[#F7941D]" />
+            <div className="p-2 sm:p-2.5 bg-[#FFC928]/20 text-[#183D2B] rounded-xl border border-[#FFC928]/40">
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#F7941D]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[#183D2B] font-poppins">
+              <h2 className="text-lg sm:text-xl font-bold text-[#183D2B] font-poppins">
                 Wholesale Price Quotation Enquiry
               </h2>
-              <p className="text-xs text-[#68756B]">
+              <p className="text-[11px] sm:text-xs text-[#68756B]">
                 For Retail Stores, Supermarkets, Dealers & Distributors
               </p>
             </div>
@@ -217,17 +220,17 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
 
         {/* Progress Bar (Steps 1, 2, 3) */}
         {step < 4 && (
-          <div className="bg-[#F4F8F0] px-6 py-2.5 border-b border-[#E6EBDD] flex items-center justify-between text-xs font-semibold">
+          <div className="bg-[#F4F8F0] px-4 sm:px-6 py-2.5 border-b border-[#E6EBDD] flex items-center justify-between text-[11px] sm:text-xs font-semibold shrink-0 overflow-x-auto no-scrollbar">
             <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-[#138443]' : 'text-slate-400'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#138443] text-white' : 'bg-slate-200'}`}>1</span>
               <span>Select Drinks</span>
             </div>
-            <div className="w-8 h-0.5 bg-[#E6EBDD]"></div>
+            <div className="w-6 sm:w-8 h-0.5 bg-[#E6EBDD]"></div>
             <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-[#138443]' : 'text-slate-400'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-[#138443] text-white' : 'bg-slate-200'}`}>2</span>
               <span>Business Info</span>
             </div>
-            <div className="w-8 h-0.5 bg-[#E6EBDD]"></div>
+            <div className="w-6 sm:w-8 h-0.5 bg-[#E6EBDD]"></div>
             <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-[#138443]' : 'text-slate-400'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-[#138443] text-white' : 'bg-slate-200'}`}>3</span>
               <span>Review & Submit</span>
@@ -236,7 +239,7 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
         )}
 
         {/* Modal Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 pb-safe">
           {error && (
             <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
               {error}

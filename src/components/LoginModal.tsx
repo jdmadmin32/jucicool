@@ -114,13 +114,16 @@ export const LoginModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#E6EBDD] overflow-hidden transform transition-all max-h-[92vh] flex flex-col"
+        className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E6EBDD] overflow-hidden transform transition-all max-h-[94vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile handle pill */}
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-2.5 sm:hidden shrink-0"></div>
+
         {/* Header Banner */}
-        <div className="relative bg-gradient-to-r from-[#183D2B] via-[#138443] to-[#0d6131] p-6 text-white text-left">
+        <div className="relative bg-gradient-to-r from-[#183D2B] via-[#138443] to-[#0d6131] p-5 sm:p-6 text-white text-left shrink-0">
           <button
             onClick={handleClose}
             className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"

@@ -107,10 +107,13 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-[#E6EBDD] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full max-h-[94vh] flex flex-col overflow-hidden shadow-2xl border border-[#E6EBDD] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+        {/* Mobile handle pill */}
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-2.5 sm:hidden shrink-0"></div>
+
         {/* Header */}
-        <div className="p-5 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between">
+        <div className="p-4 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-[#138443]/10 text-[#138443] rounded-xl">
               <PhoneCall className="w-5 h-5 text-[#138443]" />
@@ -131,7 +134,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 pb-safe">
           {confirmedOrder ? (
             /* Order Confirmation View */
             <div className="text-center py-6 space-y-4">

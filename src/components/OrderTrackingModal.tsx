@@ -59,17 +59,20 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   const retailSteps = ['Order Placed', 'Confirmed', 'Packed', 'Shipped', 'Delivered'];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-[#E6EBDD] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl max-w-xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-[#E6EBDD] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+        {/* Mobile handle pill */}
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-2.5 sm:hidden shrink-0"></div>
+
         {/* Header */}
-        <div className="p-5 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between">
+        <div className="p-4 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-[#138443]/10 text-[#138443] rounded-xl">
-              <Truck className="w-5 h-5" />
+            <div className="p-2 sm:p-2.5 bg-[#138443]/10 text-[#138443] rounded-xl">
+              <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-[#138443]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[#183D2B] font-poppins">Live Order & Enquiry Tracking</h2>
-              <p className="text-xs text-[#68756B]">Track fulfillment status in real time</p>
+              <h2 className="text-lg sm:text-xl font-bold text-[#183D2B] font-poppins">Live Order & Enquiry Tracking</h2>
+              <p className="text-[11px] sm:text-xs text-[#68756B]">Track fulfillment status in real time</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-[#68756B] hover:text-[#183D2B] rounded-full hover:bg-slate-100">
@@ -102,7 +105,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1 pb-safe">
           {/* Search Form */}
           <form onSubmit={handleSearch} className="flex gap-2">
             <input
