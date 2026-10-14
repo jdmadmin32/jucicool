@@ -3,13 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "concurrently -k -n \"server,client\" -c \"cyan,magenta\" \"tsx watch server/index.ts\" \"vite\"",
     "server": "tsx watch server/index.ts",
     "client": "vite",
     "seed": "tsx server/seed.ts",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "build": "npx tsc -b && npx vite build",
+    "build:vercel": "npx vite build",
+    "build:netlify": "npx vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
