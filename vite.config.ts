@@ -15,18 +15,29 @@ export default defineConfig({
     },
   },
   build: {
-    // Split vendor chunks to reduce main bundle size (fixes the 500kB warning)
+    // Split vendor chunks — must be a function for Vite 8 / rolldown
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-icons': ['lucide-react'],
-          'vendor-utils': ['canvas-confetti', 'clsx', 'tailwind-merge'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/@supabase')) {
+            return 'vendor-supabase';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons';
+          }
+          if (
+            id.includes('node_modules/canvas-confetti') ||
+            id.includes('node_modules/clsx') ||
+            id.includes('node_modules/tailwind-merge')
+          ) {
+            return 'vendor-utils';
+          }
         },
       },
     },
-    // Raise the warning threshold slightly (500kB → 600kB)
     chunkSizeWarningLimit: 600,
   },
 })
