@@ -1,25 +1,19 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || '';
+// Retrieve Supabase credentials from Vite environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
-  supabaseAnonKey &&
   !supabaseUrl.includes('your-project-ref') &&
-  !supabaseUrl.includes('placeholder')
+  !supabaseUrl.includes('placeholder') &&
+  supabaseAnonKey
 );
 
-if (!isSupabaseConfigured) {
-  console.error(
-    'Supabase is not configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the Vercel production environment.'
-  );
-}
-
 export const supabase = createClient(
-  isSupabaseConfigured ? supabaseUrl : 'https://placeholder.supabase.co',
-  isSupabaseConfigured ? supabaseAnonKey : 'placeholder-key',
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
@@ -27,7 +21,6 @@ export const supabase = createClient(
     },
   }
 );
-
 
 // Types for Supabase Database Tables
 export type Database = {
