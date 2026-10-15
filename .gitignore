@@ -50,3 +50,6 @@ Thumbs.db
 
 # Netlify deployment cache
 .netlify
+
+.vercel
+.env*
