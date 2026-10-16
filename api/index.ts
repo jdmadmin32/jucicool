@@ -261,15 +261,36 @@ export default async function handler(
     // -------------------------------------------------------------------------
     // Retail order submission: POST /api/retail-orders
     // -------------------------------------------------------------------------
+    
+    
+    // Retail order submission: POST /api/retail-orders
     if (path === "/retail-orders" && req.method === "POST") {
       const body = req.body || {};
 
+      // Support both camelCase and snake_case payloads.
+      const customerName = body.customerName ?? body.customer_name;
+      const customerPhone = body.customerPhone ?? body.customer_phone;
+      const customerEmail = body.customerEmail ?? body.customer_email;
+      const deliveryAddress =
+        body.deliveryAddress ?? body.delivery_address;
+      const paymentMethod =
+        body.paymentMethod ?? body.payment_method ?? "COD";
+      const deliveryFeeValue =
+        body.deliveryFee ?? body.delivery_fee ?? 0;
+      const notes = body.notes;
+
+      const rawItems = body.items;
+
+      // Validate customer details and order items.
       if (
-        !body.customer_name ||
-        !body.customer_phone ||
-        !body.delivery_address ||
-        !Array.isArray(body.items) ||
-        body.items.length === 0
+        typeof customerName !== "string" ||
+        !customerName.trim() ||
+        typeof customerPhone !== "string" ||
+        !customerPhone.trim() ||
+        typeof deliveryAddress !== "string" ||
+        !deliveryAddress.trim() ||
+        !Array.isArray(rawItems) ||
+        rawItems.length === 0
       ) {
         return res.status(400).json({
           error:
@@ -277,86 +298,176 @@ export default async function handler(
         });
       }
 
+      // Validate product IDs and quantities before querying Supabase.
+      const requestedItems = rawItems.map((item: any) => ({
+        product_id: Number(item.productId ?? item.product_id),
+        quantity: Number(item.quantity),
+      }));
+
       if (
-        body.items.some(
+        requestedItems.some(
           (item: any) =>
-            !Number.isInteger(Number(item.product_id)) ||
-            !Number.isFinite(Number(item.quantity)) ||
-            Number(item.quantity) <= 0 ||
-            !Number.isFinite(Number(item.unit_price)) ||
-            Number(item.unit_price) < 0
+            !Number.isInteger(item.product_id) ||
+            item.product_id <= 0 ||
+            !Number.isInteger(item.quantity) ||
+            item.quantity <= 0
         )
       ) {
-        return res.status(400).json({ error: "Invalid order items" });
+        return res.status(400).json({
+          error: "Invalid product ID or quantity",
+        });
       }
 
-      // Calculate totals on the server; don't trust client totals.
-      const subtotal = body.items.reduce(
-        (sum: number, item: any) =>
-          sum + Number(item.unit_price) * Number(item.quantity),
+      // Retrieve product details from the database.
+      const productIds = [
+        ...new Set(
+          requestedItems.map((item: any) => item.product_id)
+        ),
+      ];
+
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", productIds);
+
+      if (productsError) {
+        console.error("Retail order product lookup:", productsError);
+
+        return res.status(500).json({
+          error: "Unable to validate order products",
+        });
+      }
+
+      const productMap = new Map(
+        (products ?? []).map((product: any) => [
+          Number(product.id),
+          product,
+        ])
+      );
+
+      // Build order items using database product details and prices.
+      const items: any[] = [];
+
+      for (const requestedItem of requestedItems) {
+        const product: any = productMap.get(
+          requestedItem.product_id
+        );
+
+        if (!product) {
+          return res.status(400).json({
+            error: `Product ID ${requestedItem.product_id} was not found`,
+          });
+        }
+
+        // Change "price", "name", or "pack_size" here if your
+        // Supabase products table uses different column names.
+        const unitPrice = Number(product.price);
+
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+          console.error(
+            "Invalid product price in database:",
+            requestedItem.product_id
+          );
+
+          return res.status(500).json({
+            error: `Product ID ${requestedItem.product_id} has an invalid database price`,
+          });
+        }
+
+        items.push({
+          product_id: requestedItem.product_id,
+          product_name: String(product.name ?? ""),
+          pack_size: String(product.pack_size ?? ""),
+          unit_price: unitPrice,
+          quantity: requestedItem.quantity,
+          total_price: unitPrice * requestedItem.quantity,
+        });
+      }
+
+      // Calculate totals on the server.
+      const subtotal = items.reduce(
+        (sum: number, item: any) => sum + item.total_price,
         0
       );
 
-      const deliveryFee = Math.max(0, Number(body.delivery_fee) || 0);
+      const parsedDeliveryFee = Number(deliveryFeeValue);
+      const deliveryFee = Number.isFinite(parsedDeliveryFee)
+        ? Math.max(0, parsedDeliveryFee)
+        : 0;
+
       const totalAmount = subtotal + deliveryFee;
       const orderNumber = makeReference("JC-RET");
 
+      // Create the order record.
       const { data: order, error: orderError } = await supabase
         .from("retail_orders")
         .insert({
           order_number: orderNumber,
-          customer_name: String(body.customer_name).trim(),
-          customer_phone: String(body.customer_phone).trim(),
-          customer_email: body.customer_email || null,
-          delivery_address: String(body.delivery_address).trim(),
-          city: body.city || "",
-          state: body.state || "",
-          pincode: body.pincode || "",
+          customer_name: customerName.trim(),
+          customer_phone: customerPhone.trim(),
+          customer_email:
+            typeof customerEmail === "string" && customerEmail.trim()
+              ? customerEmail.trim()
+              : null,
+          delivery_address: deliveryAddress.trim(),
+          city: body.city ?? "",
+          state: body.state ?? "",
+          pincode: body.pincode == null
+            ? ""
+            : String(body.pincode),
           subtotal,
           delivery_fee: deliveryFee,
           total_amount: totalAmount,
-          payment_method: body.payment_method || "COD",
+          payment_method: paymentMethod,
           payment_status: "Pending",
           order_status: "New",
-          notes: body.notes || null,
+          notes: notes || null,
         })
         .select("id, order_number")
         .single();
 
       if (orderError || !order) {
         console.error("Retail order insert:", orderError);
+
         return res.status(500).json({
-          error: orderError?.message || "Failed to create retail order",
+          error:
+            orderError?.message || "Failed to create retail order",
         });
       }
 
-      const items = body.items.map((item: any) => ({
+      // Save the items belonging to the new order.
+      const itemsToInsert = items.map((item: any) => ({
         order_id: order.id,
-        product_id: Number(item.product_id),
-        product_name: String(item.product_name || ""),
-        pack_size: String(item.pack_size || ""),
-        unit_price: Number(item.unit_price),
-        quantity: Number(item.quantity),
-        total_price: Number(item.unit_price) * Number(item.quantity),
+        product_id: item.product_id,
+        product_name: item.product_name,
+        pack_size: item.pack_size,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        total_price: item.total_price,
       }));
 
       const { error: itemsError } = await supabase
         .from("retail_order_items")
-        .insert(items);
+        .insert(itemsToInsert);
 
       if (itemsError) {
         console.error("Retail order items insert:", itemsError);
+
         return res.status(500).json({
           error:
-            "The order was created, but saving its items failed. Contact the store with order number " +
+            "Order was created but saving its items failed. Order reference: " +
             order.order_number,
         });
       }
 
       return res.status(201).json({
         success: true,
+        message: "Retail order placed successfully",
         order_number: order.order_number,
         order_id: order.id,
+        subtotal,
+        delivery_fee: deliveryFee,
+        total_amount: totalAmount,
       });
     }
 
