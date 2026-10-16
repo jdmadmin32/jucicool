@@ -361,7 +361,7 @@ export default async function handler(
 
         // Change "price", "name", or "pack_size" here if your
         // Supabase products table uses different column names.
-        const unitPrice = Number(product.price);
+        const unitPrice = Number(product.retail_price);
 
         if (!Number.isFinite(unitPrice) || unitPrice < 0) {
           console.error(
