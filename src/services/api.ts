@@ -130,17 +130,11 @@ export async function loginCustomerOrAdmin(
 // RETAIL ORDERS
 // ----------------------------------------------------
 
-export async function submitRetailOrder(payload: any): Promise<any> {
-  if (isSupabaseConfigured) {
-    return submitRetailOrderToSupabase(payload);
-  }
 
+export async function submitRetailOrder(payload: any): Promise<any> {
   const res = await fetch(`${API_BASE}/retail-orders`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getCustomerAuthHeader(),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
@@ -152,12 +146,7 @@ export async function submitRetailOrder(payload: any): Promise<any> {
 
   return data;
 }
-
 export async function trackRetailOrder(query: string): Promise<any> {
-  if (isSupabaseConfigured) {
-    return trackRetailOrderFromSupabase(query);
-  }
-
   const res = await fetch(
     `${API_BASE}/retail-orders/track/${encodeURIComponent(query)}`
   );
@@ -170,16 +159,7 @@ export async function trackRetailOrder(query: string): Promise<any> {
 
   return data;
 }
-
-// ----------------------------------------------------
-// BULK ENQUIRIES
-// ----------------------------------------------------
-
 export async function submitBulkEnquiry(payload: any): Promise<any> {
-  if (isSupabaseConfigured) {
-    return submitBulkEnquiryToSupabase(payload);
-  }
-
   const res = await fetch(`${API_BASE}/bulk-enquiries`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -196,10 +176,6 @@ export async function submitBulkEnquiry(payload: any): Promise<any> {
 }
 
 export async function trackBulkEnquiry(ref: string): Promise<any> {
-  if (isSupabaseConfigured) {
-    return trackBulkEnquiryFromSupabase(ref);
-  }
-
   const res = await fetch(
     `${API_BASE}/bulk-enquiries/track/${encodeURIComponent(ref)}`
   );
@@ -212,7 +188,6 @@ export async function trackBulkEnquiry(ref: string): Promise<any> {
 
   return data;
 }
-
 // ----------------------------------------------------
 // ADMIN AUTHENTICATION
 // ----------------------------------------------------
