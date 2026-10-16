@@ -838,6 +838,72 @@ export default async function handler(
     }
 
     
+    // GET /admin/dashboard
+    if (path === "/admin/dashboard" && req.method === "GET") {
+      const user = verifyToken(req);
+
+      if (!user) {
+        return res.status(401).json({
+          error: "Authentication required",
+        });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({
+          error: "Admin access required",
+        });
+      }
+
+      const [
+        { data: orders, error: ordersError },
+        { data: enquiries, error: enquiriesError },
+      ] = await Promise.all([
+        supabase
+          .from("retail_orders")
+          .select("id, total_amount, order_status, payment_status, created_at"),
+        supabase
+          .from("bulk_enquiries")
+          .select("id, status, created_at"),
+      ]);
+
+      if (ordersError) {
+        console.error("Dashboard orders error:", ordersError);
+        return res.status(500).json({ error: ordersError.message });
+      }
+
+      if (enquiriesError) {
+        console.error("Dashboard enquiries error:", enquiriesError);
+        return res.status(500).json({ error: enquiriesError.message });
+      }
+
+      const allOrders = orders || [];
+      const allEnquiries = enquiries || [];
+
+      return res.status(200).json({
+        totalOrders: allOrders.length,
+        totalRevenue: allOrders.reduce(
+          (sum: number, order: any) =>
+            sum + Number(order.total_amount || 0),
+          0
+        ),
+        pendingOrders: allOrders.filter(
+          (order: any) =>
+            String(order.order_status).toLowerCase() === "new" ||
+            String(order.order_status).toLowerCase() === "pending"
+        ).length,
+        completedOrders: allOrders.filter(
+          (order: any) =>
+            String(order.order_status).toLowerCase() === "delivered" ||
+            String(order.order_status).toLowerCase() === "completed"
+        ).length,
+        totalEnquiries: allEnquiries.length,
+        newEnquiries: allEnquiries.filter(
+          (enquiry: any) =>
+            String(enquiry.status).toLowerCase() === "new"
+        ).length,
+      });
+    }
+
     // GET /admin/retail-orders
     if (path === "/admin/retail-orders" && req.method === "GET") {
       const user = verifyToken(req);
