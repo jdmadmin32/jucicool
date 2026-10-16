@@ -573,6 +573,159 @@ export default async function handler(
     }
 
     // Admin routes are not implemented in this file yet.
+    
+    // -------------------------------------------------------------------------
+    // ADMIN: List bulk enquiries
+    // GET /api/admin/bulk-enquiries
+    // -------------------------------------------------------------------------
+    if (path === "/admin/bulk-enquiries" && req.method === "GET") {
+      const user = verifyToken(req);
+
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      let query = supabase
+        .from("bulk_enquiries")
+        .select("*, bulk_enquiry_items(*), quotations(*)")
+        .order("created_at", { ascending: false });
+
+      const status = String(req.query.status || "").trim();
+      const search = String(req.query.search || "").trim();
+
+      if (status && status.toLowerCase() !== "all") {
+        query = query.eq("status", status);
+      }
+
+      if (search) {
+        const safeSearch = search.replace(/[,%()]/g, " ").trim();
+
+        if (safeSearch) {
+          query = query.or(
+            `customer_name.ilike.%${safeSearch}%,phone_number.ilike.%${safeSearch}%,business_name.ilike.%${safeSearch}%,enquiry_number.ilike.%${safeSearch}%`
+          );
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Admin bulk enquiry list failed:", error);
+        return res.status(500).json({
+          error: "Failed to fetch bulk enquiries",
+        });
+      }
+
+      return res.status(200).json(data || []);
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Get one bulk enquiry
+    // GET /api/admin/bulk-enquiries/:id
+    // -------------------------------------------------------------------------
+    const adminEnquiryMatch = path.match(
+      /^\/admin\/bulk-enquiries\/(\d+)$/
+    );
+
+    if (
+      adminEnquiryMatch &&
+      req.method === "GET"
+    ) {
+      const user = verifyToken(req);
+
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { data, error } = await supabase
+        .from("bulk_enquiries")
+        .select("*, bulk_enquiry_items(*), quotations(*)")
+        .eq("id", Number(adminEnquiryMatch[1]))
+        .maybeSingle();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      if (!data) {
+        return res.status(404).json({ error: "Bulk enquiry not found" });
+      }
+
+      return res.status(200).json(data);
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Update bulk enquiry status
+    // PATCH /api/admin/bulk-enquiries/:id
+    // -------------------------------------------------------------------------
+    if (
+      adminEnquiryMatch &&
+      req.method === "PATCH"
+    ) {
+      const user = verifyToken(req);
+
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const body = req.body || {};
+      const updates: Record<string, any> = {};
+
+      if (body.status !== undefined) {
+        const allowedStatuses = [
+          "New",
+          "Contacted",
+          "Quoted",
+          "Converted",
+          "Rejected",
+          "Closed",
+        ];
+
+        if (!allowedStatuses.includes(body.status)) {
+          return res.status(400).json({
+            error: "Invalid enquiry status",
+          });
+        }
+
+        updates.status = body.status;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          error: "No supported fields provided for update",
+        });
+      }
+
+      const { data, error } = await supabase
+        .from("bulk_enquiries")
+        .update(updates)
+        .eq("id", Number(adminEnquiryMatch[1]))
+        .select("*, bulk_enquiry_items(*), quotations(*)")
+        .maybeSingle();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      if (!data) {
+        return res.status(404).json({ error: "Bulk enquiry not found" });
+      }
+
+      return res.status(200).json(data);
+    }
+
     if (path.startsWith("/admin/")) {
       const user = verifyToken(req);
 
