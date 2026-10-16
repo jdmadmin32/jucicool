@@ -95,23 +95,7 @@ export const LoginModal: React.FC = () => {
     }
   };
 
-  const fillDemoDealer = () => {
-    setIdentifier('dealer@jucicool.com');
-    setPassword('dealer123');
-    setError(null);
-  };
 
-  const fillDemoCustomer = () => {
-    setIdentifier('customer@jucicool.com');
-    setPassword('password123');
-    setError(null);
-  };
-
-  const fillDemoAdmin = () => {
-    setIdentifier('admin@jucicool.com');
-    setPassword('juci@cool123');
-    setError(null);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -275,39 +259,7 @@ export const LoginModal: React.FC = () => {
                 )}
               </button>
 
-              {/* Demo auto-fill buttons */}
-              <div className="pt-2 border-t border-[#E6EBDD] text-center space-y-1.5">
-                <div className="text-[11px] text-[#68756B]">
-                  <span>Try Demo: </span>
-                  {loginModalSection === 'dealer' ? (
-                    <button
-                      type="button"
-                      onClick={fillDemoDealer}
-                      className="text-[11px] font-bold text-[#138443] hover:underline ml-1"
-                    >
-                      Dealer (dealer@jucicool.com / dealer123)
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={fillDemoCustomer}
-                      className="text-[11px] font-bold text-[#138443] hover:underline ml-1"
-                    >
-                      Customer (customer@jucicool.com / password123)
-                    </button>
-                  )}
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={fillDemoAdmin}
-                    className="text-[11px] font-semibold text-slate-500 hover:text-[#138443] hover:underline inline-flex items-center gap-1"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#138443]" />
-                    <span>Admin Login: admin@jucicool.com (juci@cool123)</span>
-                  </button>
-                </div>
-              </div>
+
             </form>
           ) : (
             /* ================= REGISTER FORM ================= */

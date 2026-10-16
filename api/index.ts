@@ -78,9 +78,10 @@ export default async function handler(
 
       let query = supabase
         .from("products")
-        .select("*, product_categories(name, slug, emoji)")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
+        .select("*, product_categories(name, slug), product_images(image_url, display_order)")
+        .eq("is_active", 1)
+        .order("featured", { ascending: false })
+        .order("id", { ascending: true });
 
       if (category && category !== "all") {
         const { data: cat, error: catError } = await supabase
@@ -96,26 +97,34 @@ export default async function handler(
       }
 
       if (search) query = query.ilike("name", `%${search}%`);
-      if (featured === "true") query = query.eq("is_featured", true);
+      if (featured === "true") query = query.eq("featured", 1);
 
       const { data, error } = await query;
 
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) {
+        console.error("Products fetch error:", error);
+        return res.status(500).json({ error: error.message });
+      }
 
       return res.status(200).json(
         (data || []).map((p: any) => ({
           ...p,
-          price: Number(p.price),
-          mrp: p.mrp == null ? null : Number(p.mrp),
-          imageUrl: p.image_url,
-          packSize: p.pack_size,
-          categoryId: p.category_id,
-          categoryName: p.product_categories?.name || "",
-          categorySlug: p.product_categories?.slug || "",
-          categoryEmoji: p.product_categories?.emoji || "",
-          isActive: p.is_active,
-          isFeatured: p.is_featured,
-          stockQuantity: p.stock_quantity,
+          retail_price: Number(p.retail_price),
+          wholesale_price: Number(p.wholesale_price || 0),
+          image_url: p.image_url,
+          shot_image_url: p.shot_image_url,
+          pack_size: p.pack_size,
+          packaging_type: p.packaging_type,
+          category_id: p.category_id,
+          category_name: p.product_categories?.name || "",
+          category_slug: p.product_categories?.slug || "",
+          is_active: p.is_active,
+          featured: p.featured,
+          stock_quantity: p.stock_quantity,
+          min_wholesale_qty: p.min_wholesale_qty,
+          extra_images: (p.product_images || [])
+            .sort((a: any, b: any) => a.display_order - b.display_order)
+            .map((img: any) => img.image_url),
         }))
       );
     }
@@ -141,8 +150,7 @@ export default async function handler(
       const { data, error } = await supabase
         .from("product_categories")
         .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
+        .order("display_order");
 
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data || []);
@@ -988,21 +996,452 @@ export default async function handler(
       return res.status(200).json(data);
     }
 
-    if (path.startsWith("/admin/")) {
-      
+    // -------------------------------------------------------------------------
+    // ADMIN: Products — GET all
+    // GET /api/admin/products
+    // -------------------------------------------------------------------------
+    if (path === "/admin/products" && req.method === "GET") {
       const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
 
-      if (!user) {
-        return res.status(401).json({ error: "Authentication required" });
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, product_categories(name, slug), product_images(id, image_url, display_order)")
+        .order("id", { ascending: true });
+
+      if (error) {
+        console.error("Admin fetch products:", error);
+        return res.status(500).json({ error: error.message });
       }
 
-      if (user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
+      return res.status(200).json(
+        (data || []).map((p: any) => ({
+          ...p,
+          category_name: p.product_categories?.name || "",
+          category_slug: p.product_categories?.slug || "",
+          extra_images: (p.product_images || [])
+            .sort((a: any, b: any) => a.display_order - b.display_order)
+            .map((img: any) => img.image_url),
+        }))
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Products — CREATE
+    // POST /api/admin/products
+    // -------------------------------------------------------------------------
+    if (path === "/admin/products" && req.method === "POST") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const body = req.body || {};
+      const {
+        name, flavor, categoryId, packSize, packagingType, description,
+        retailPrice, wholesalePrice, stockQuantity, minWholesaleQty,
+        imageUrl, shotImageUrl, isActive, featured, extraImages,
+      } = body;
+
+      if (!name || !flavor || !categoryId || !packSize || !packagingType || !imageUrl || retailPrice == null || wholesalePrice == null) {
+        return res.status(400).json({ error: "Missing required product fields: name, flavor, categoryId, packSize, packagingType, imageUrl, retailPrice, wholesalePrice" });
       }
 
+      const { data: product, error } = await supabase
+        .from("products")
+        .insert({
+          name: String(name).trim(),
+          flavor: String(flavor).trim(),
+          category_id: Number(categoryId),
+          pack_size: String(packSize).trim(),
+          packaging_type: String(packagingType).trim(),
+          description: description || null,
+          retail_price: Number(retailPrice),
+          wholesale_price: Number(wholesalePrice),
+          stock_quantity: Number(stockQuantity ?? 100),
+          min_wholesale_qty: Number(minWholesaleQty ?? 1),
+          image_url: String(imageUrl).trim(),
+          shot_image_url: shotImageUrl ? String(shotImageUrl).trim() : null,
+          is_active: Number(isActive ?? 1),
+          featured: Number(featured ?? 0),
+        })
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("Admin create product error:", error);
+        return res.status(500).json({ error: error.message });
+      }
+
+      // Insert extra gallery images
+      if (Array.isArray(extraImages) && extraImages.length > 0) {
+        const imageRows = extraImages
+          .filter(Boolean)
+          .map((url: string, idx: number) => ({
+            product_id: product.id,
+            image_url: String(url).trim(),
+            display_order: idx,
+          }));
+        await supabase.from("product_images").insert(imageRows);
+      }
+
+      return res.status(201).json({ success: true, product });
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Products — UPDATE / DELETE by ID
+    // PATCH /api/admin/products/:id
+    // DELETE /api/admin/products/:id
+    // -------------------------------------------------------------------------
+    const adminProductMatch = path.match(/^\/admin\/products\/(\d+)$/);
+
+    if (adminProductMatch && (req.method === "PATCH" || req.method === "DELETE")) {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const productId = Number(adminProductMatch[1]);
+
+      if (req.method === "DELETE") {
+        // Remove gallery images first (FK constraint)
+        await supabase.from("product_images").delete().eq("product_id", productId);
+        const { error } = await supabase.from("products").delete().eq("id", productId);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true, message: "Product deleted" });
+      }
+
+      // PATCH — build update map from camelCase payload
+      const body = req.body || {};
+      const updates: Record<string, any> = {};
+
+      if (body.name !== undefined) updates.name = String(body.name).trim();
+      if (body.flavor !== undefined) updates.flavor = String(body.flavor).trim();
+      if (body.categoryId !== undefined) updates.category_id = Number(body.categoryId);
+      if (body.packSize !== undefined) updates.pack_size = String(body.packSize).trim();
+      if (body.packagingType !== undefined) updates.packaging_type = String(body.packagingType).trim();
+      if (body.description !== undefined) updates.description = body.description || null;
+      if (body.retailPrice !== undefined) updates.retail_price = Number(body.retailPrice);
+      if (body.wholesalePrice !== undefined) updates.wholesale_price = Number(body.wholesalePrice);
+      if (body.stockQuantity !== undefined) updates.stock_quantity = Number(body.stockQuantity);
+      if (body.minWholesaleQty !== undefined) updates.min_wholesale_qty = Number(body.minWholesaleQty);
+      if (body.imageUrl !== undefined) updates.image_url = String(body.imageUrl).trim();
+      if (body.shotImageUrl !== undefined) updates.shot_image_url = body.shotImageUrl ? String(body.shotImageUrl).trim() : null;
+      if (body.isActive !== undefined) updates.is_active = Number(body.isActive);
+      if (body.featured !== undefined) updates.featured = Number(body.featured);
+
+      let updatedProduct: any = null;
+
+      if (Object.keys(updates).length > 0) {
+        const { data, error } = await supabase
+          .from("products")
+          .update(updates)
+          .eq("id", productId)
+          .select("*")
+          .single();
+
+        if (error) return res.status(500).json({ error: error.message });
+        if (!data) return res.status(404).json({ error: "Product not found" });
+        updatedProduct = data;
+      }
+
+      // Replace extra gallery images if provided
+      if (Array.isArray(body.extraImages)) {
+        await supabase.from("product_images").delete().eq("product_id", productId);
+        if (body.extraImages.length > 0) {
+          const imageRows = body.extraImages
+            .filter(Boolean)
+            .map((url: string, idx: number) => ({
+              product_id: productId,
+              image_url: String(url).trim(),
+              display_order: idx,
+            }));
+          await supabase.from("product_images").insert(imageRows);
+        }
+      }
+
+      if (!updatedProduct) {
+        const { data } = await supabase.from("products").select("*").eq("id", productId).single();
+        updatedProduct = data;
+      }
+
+      return res.status(200).json({ success: true, product: updatedProduct });
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Retail Orders — PATCH (update status / notes)
+    // PATCH /api/admin/retail-orders/:id
+    // -------------------------------------------------------------------------
+    if (retailOrderMatch && req.method === "PATCH") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const body = req.body || {};
+      const updates: Record<string, any> = {};
+
+      const allowedOrderStatuses = ["New", "Confirmed", "Packed", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Returned"];
+      const allowedPaymentStatuses = ["Pending", "Paid", "Failed", "Refunded"];
+
+      if (body.orderStatus !== undefined) {
+        if (!allowedOrderStatuses.includes(body.orderStatus)) {
+          return res.status(400).json({ error: "Invalid order status" });
+        }
+        updates.order_status = body.orderStatus;
+      }
+      if (body.paymentStatus !== undefined) {
+        if (!allowedPaymentStatuses.includes(body.paymentStatus)) {
+          return res.status(400).json({ error: "Invalid payment status" });
+        }
+        updates.payment_status = body.paymentStatus;
+      }
+      if (body.notes !== undefined) updates.notes = body.notes || null;
+      if (body.internalNotes !== undefined) updates.internal_notes = body.internalNotes || null;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+
+      const { data, error } = await supabase
+        .from("retail_orders")
+        .update(updates)
+        .eq("id", retailOrderMatch[1])
+        .select("*, retail_order_items(*)")
+        .single();
+
+      if (error) return res.status(500).json({ error: error.message });
+      if (!data) return res.status(404).json({ error: "Retail order not found" });
+
+      return res.status(200).json(data);
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Wholesale Orders
+    // GET /api/admin/wholesale-orders
+    // -------------------------------------------------------------------------
+    if (path === "/admin/wholesale-orders" && req.method === "GET") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      let query = supabase
+        .from("wholesale_orders")
+        .select("*, wholesale_order_items(*)")
+        .order("created_at", { ascending: false });
+
+      const status = String(req.query?.status || "").trim();
+      const search = String(req.query?.search || "").trim();
+
+      if (status && status.toLowerCase() !== "all") {
+        query = query.eq("status", status);
+      }
+
+      const { data, error } = await query;
+      if (error) return res.status(500).json({ error: error.message });
+
+      let orders = data || [];
+      if (search) {
+        const term = search.toLowerCase();
+        orders = orders.filter((o: any) =>
+          [o.order_number, o.customer_name, o.customer_phone].some(
+            (v) => String(v || "").toLowerCase().includes(term)
+          )
+        );
+      }
+
+      return res.status(200).json(orders);
+    }
+
+    // PATCH /api/admin/wholesale-orders/:id
+    const adminWholesaleMatch = path.match(/^\/admin\/wholesale-orders\/(\d+)$/);
+    if (adminWholesaleMatch && req.method === "PATCH") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const body = req.body || {};
+      const updates: Record<string, any> = {};
+      if (body.status !== undefined) updates.status = body.status;
+      if (body.notes !== undefined) updates.notes = body.notes || null;
+      if (body.paymentStatus !== undefined) updates.payment_status = body.paymentStatus;
+
+      const { data, error } = await supabase
+        .from("wholesale_orders")
+        .update(updates)
+        .eq("id", Number(adminWholesaleMatch[1]))
+        .select("*")
+        .single();
+
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json(data);
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Customers Directory
+    // GET /api/admin/customers
+    // -------------------------------------------------------------------------
+    if (path === "/admin/customers" && req.method === "GET") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, full_name, email, phone, role, company_name, customer_type, city, state, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json(data || []);
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Reports
+    // GET /api/admin/reports
+    // -------------------------------------------------------------------------
+    if (path === "/admin/reports" && req.method === "GET") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const [
+        { data: orders },
+        { data: enquiries },
+        { data: products },
+      ] = await Promise.all([
+        supabase
+          .from("retail_orders")
+          .select("id, total_amount, order_status, payment_status, created_at")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("bulk_enquiries")
+          .select("id, status, created_at")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("products")
+          .select("id, name, stock_quantity, is_active")
+          .order("stock_quantity", { ascending: true }),
+      ]);
+
+      const allOrders = orders || [];
+      const totalRevenue = allOrders.reduce(
+        (sum: number, o: any) =>
+          o.order_status !== "Cancelled" && o.order_status !== "Returned"
+            ? sum + Number(o.total_amount || 0)
+            : sum,
+        0
+      );
+
+      return res.status(200).json({
+        orders: {
+          total: allOrders.length,
+          totalRevenue,
+          byStatus: allOrders.reduce((acc: Record<string, number>, o: any) => {
+            acc[o.order_status] = (acc[o.order_status] || 0) + 1;
+            return acc;
+          }, {}),
+        },
+        enquiries: {
+          total: (enquiries || []).length,
+          byStatus: (enquiries || []).reduce((acc: Record<string, number>, e: any) => {
+            acc[e.status] = (acc[e.status] || 0) + 1;
+            return acc;
+          }, {}),
+        },
+        lowStockProducts: (products || []).filter((p: any) => p.stock_quantity < 50 && p.is_active === 1),
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Quotations — PATCH status
+    // PATCH /api/admin/quotations/:id
+    // -------------------------------------------------------------------------
+    const adminQuotationMatch = path.match(/^\/admin\/quotations\/(\d+)$/);
+    if (adminQuotationMatch && req.method === "PATCH") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const body = req.body || {};
+      const updates: Record<string, any> = {};
+      if (body.status !== undefined) updates.status = body.status;
+      if (body.notes !== undefined) updates.notes = body.notes || null;
+      if (body.validUntil !== undefined) updates.valid_until = body.validUntil;
+
+      const { data, error } = await supabase
+        .from("quotations")
+        .update(updates)
+        .eq("id", Number(adminQuotationMatch[1]))
+        .select("*")
+        .single();
+
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json(data);
+    }
+
+    // POST /api/admin/bulk-enquiries/:id/quotations
+    const createQuotationMatch = path.match(/^\/admin\/bulk-enquiries\/(\d+)\/quotations$/);
+    if (createQuotationMatch && req.method === "POST") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const enquiryId = Number(createQuotationMatch[1]);
+      const body = req.body || {};
+
+      const quotationNumber = makeReference("JC-QT");
+
+      const { data: quotation, error: qError } = await supabase
+        .from("quotations")
+        .insert({
+          enquiry_id: enquiryId,
+          quotation_number: quotationNumber,
+          created_by: user.fullName || "Admin",
+          valid_until: body.validUntil || null,
+          notes: body.notes || null,
+          status: "Draft",
+          total_amount: Number(body.totalAmount || 0),
+        })
+        .select("*")
+        .single();
+
+      if (qError) {
+        console.error("Create quotation error:", qError);
+        return res.status(500).json({ error: qError.message });
+      }
+
+      // Insert quotation items
+      if (Array.isArray(body.items) && body.items.length > 0) {
+        const itemRows = body.items.map((item: any) => ({
+          quotation_id: quotation.id,
+          product_id: Number(item.productId ?? item.product_id),
+          product_name: String(item.productName ?? item.product_name ?? ""),
+          pack_size: String(item.packSize ?? item.pack_size ?? ""),
+          requested_quantity: Number(item.requestedQuantity ?? item.requested_quantity ?? 0),
+          approved_quantity: Number(item.approvedQuantity ?? item.approved_quantity ?? 0),
+          approved_unit_price: Number(item.approvedUnitPrice ?? item.approved_unit_price ?? 0),
+          total_price: Number(item.totalPrice ?? item.total_price ?? 0),
+        }));
+
+        await supabase.from("quotation_items").insert(itemRows);
+      }
+
+      // Update enquiry status to Quoted
+      await supabase
+        .from("bulk_enquiries")
+        .update({ status: "Quoted" })
+        .eq("id", enquiryId);
+
+      return res.status(201).json({ success: true, quotation });
+    }
+
+    // -------------------------------------------------------------------------
+    // Fallback for unimplemented /admin/* paths
+    // -------------------------------------------------------------------------
+    if (path.startsWith("/admin/")) {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
       return res.status(501).json({
-        error:
-          "This admin API route is not implemented in api/index.ts yet.",
+        error: "This admin API route is not yet implemented.",
         route: path,
       });
     }

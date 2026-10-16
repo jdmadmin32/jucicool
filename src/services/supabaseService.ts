@@ -31,9 +31,13 @@ export async function fetchProductsFromSupabase(params?: {
     .from('products')
     .select(`
       *,
-      product_categories!inner (
+      product_categories (
         name,
         slug
+      ),
+      product_images (
+        image_url,
+        display_order
       )
     `)
     .eq('is_active', 1);
@@ -42,10 +46,16 @@ export async function fetchProductsFromSupabase(params?: {
     query = query.eq('featured', 1);
   }
 
-  if (params?.category) {
-    query = query.or(`slug.eq.${params.category},name.eq.${params.category}`, {
-      referencedTable: 'product_categories',
-    });
+  if (params?.category && params.category !== 'all') {
+    // Look up category id by slug first, then filter
+    const { data: cat } = await supabase
+      .from('product_categories')
+      .select('id')
+      .eq('slug', params.category)
+      .maybeSingle();
+    if (cat) {
+      query = query.eq('category_id', cat.id);
+    }
   }
 
   if (params?.search) {
@@ -53,15 +63,22 @@ export async function fetchProductsFromSupabase(params?: {
     query = query.or(`name.ilike.%${s}%,flavor.ilike.%${s}%,description.ilike.%${s}%`);
   }
 
-  query = query.order('featured', { ascending: false }).order('id', { ascending: true });
+  query = query
+    .order('featured', { ascending: false })
+    .order('id', { ascending: true });
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   return (data || []).map((row: any) => ({
     ...row,
+    retail_price: Number(row.retail_price),
+    wholesale_price: Number(row.wholesale_price || 0),
     category_name: row.product_categories?.name,
     category_slug: row.product_categories?.slug,
+    extra_images: (row.product_images || [])
+      .sort((a: any, b: any) => a.display_order - b.display_order)
+      .map((img: any) => img.image_url),
   }));
 }
 

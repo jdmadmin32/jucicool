@@ -36,8 +36,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Login form states
-  const [email, setEmail] = useState('admin@jucicool.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -50,10 +50,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
     }
   };
 
-  const autofillAdmin = () => {
-    setEmail('jucicooladmin');
-    setPassword('juci@cool123');
-  };
+
 
   // Nav Tabs Config
   const tabs = [
@@ -146,19 +143,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
             </button>
           </form>
 
-          {/* Quick Demo Credentials Autofill */}
-          <div className="p-3 bg-[#F4F8F0] rounded-2xl border border-[#E6EBDD] text-xs flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="font-bold text-[#183D2B]">Admin ID & Password:</div>
-              <div className="text-[11px] text-[#68756B]">ID: <strong>jucicooladmin</strong> &bull; Pass: <strong>juci@cool123</strong></div>
-            </div>
-            <button
-              onClick={autofillAdmin}
-              className="px-2.5 py-1 text-[11px] font-bold bg-white border border-[#E6EBDD] rounded-lg text-[#138443] hover:bg-[#138443] hover:text-white transition-colors"
-            >
-              Autofill
-            </button>
-          </div>
+
 
           <div className="text-center pt-2">
             <button
