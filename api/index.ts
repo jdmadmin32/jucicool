@@ -837,7 +837,93 @@ export default async function handler(
       return res.status(200).json(data);
     }
 
+    
+    // GET /admin/retail-orders
+    if (path === "/admin/retail-orders" && req.method === "GET") {
+      const user = verifyToken(req);
+
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      let query = supabase
+        .from("retail_orders")
+        .select("*, retail_order_items(*)")
+        .order("created_at", { ascending: false });
+
+      const status = req.query?.status;
+      const search = req.query?.search;
+
+      if (status) {
+        query = query.eq("order_status", status);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Retail orders query failed:", error);
+        return res.status(500).json({ error: error.message });
+      }
+
+      let orders = data || [];
+
+      if (search) {
+        const term = String(search).toLowerCase();
+
+        orders = orders.filter((order: any) =>
+          [
+            order.order_number,
+            order.customer_name,
+            order.customer_phone,
+            order.customer_email,
+          ].some((value) =>
+            String(value || "").toLowerCase().includes(term)
+          )
+        );
+      }
+
+      return res.status(200).json(orders);
+    }
+
+    // GET /admin/retail-orders/:id
+    const retailOrderMatch = path.match(
+      /^\/admin\/retail-orders\/([^/]+)$/
+    );
+
+    if (retailOrderMatch && req.method === "GET") {
+      const user = verifyToken(req);
+
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { data, error } = await supabase
+        .from("retail_orders")
+        .select("*, retail_order_items(*)")
+        .eq("id", retailOrderMatch[1])
+        .maybeSingle();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      if (!data) {
+        return res.status(404).json({ error: "Retail order not found" });
+      }
+
+      return res.status(200).json(data);
+    }
+
     if (path.startsWith("/admin/")) {
+      
       const user = verifyToken(req);
 
       if (!user) {
