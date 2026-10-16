@@ -400,83 +400,103 @@ export default async function handler(
     // -------------------------------------------------------------------------
     // Bulk enquiry submission: POST /api/bulk-enquiries
     // -------------------------------------------------------------------------
+    
+    // Bulk enquiry submission: POST /api/bulk-enquiries
     if (path === "/bulk-enquiries" && req.method === "POST") {
       const body = req.body || {};
 
+      // Accept both camelCase and snake_case payloads.
+      const customerName = body.customerName ?? body.customer_name;
+      const phoneNumber = body.phoneNumber ?? body.phone_number;
+      const businessName = body.businessName ?? body.business_name;
+      const customerType = body.customerType ?? body.customer_type;
+      const preferredContactMethod =
+        body.preferredContactMethod ?? body.preferred_contact_method;
+      const deliveryLocation =
+        body.deliveryLocation ?? body.delivery_location;
+      const additionalNotes =
+        body.additionalNotes ?? body.additional_notes;
+
       if (
-        !body.customer_name ||
-        !body.phone_number ||
-        !body.business_name ||
-        !Array.isArray(body.items)
+        !customerName ||
+        !phoneNumber ||
+        !businessName ||
+        !Array.isArray(body.items) ||
+        body.items.length === 0
       ) {
         return res.status(400).json({
-          error:
-            "Customer name, phone number, business name and items are required",
+          error: "Customer name, phone number, business name and items are required",
         });
       }
 
+      const items = body.items.map((item: any) => ({
+        product_id: Number(item.productId ?? item.product_id),
+        product_name: String(item.productName ?? item.product_name ?? ""),
+        pack_size: String(item.packSize ?? item.pack_size ?? ""),
+        requested_quantity: Number(
+          item.quantity ?? item.requestedQuantity ?? item.requested_quantity
+        ),
+        unit_label: item.unitLabel ?? item.unit_label ?? "Units",
+      }));
+
       if (
-        body.items.some(
+        items.some(
           (item: any) =>
-            !Number.isInteger(Number(item.product_id)) ||
-            !Number.isFinite(Number(item.requested_quantity)) ||
-            Number(item.requested_quantity) <= 0
+            !Number.isInteger(item.product_id) ||
+            !Number.isFinite(item.requested_quantity) ||
+            item.requested_quantity <= 0
         )
       ) {
-        return res.status(400).json({ error: "Invalid enquiry items" });
+        return res.status(400).json({
+          error: "Invalid product or requested quantity",
+        });
       }
 
-      const enquiryNumber = makeReference("JC-BLK");
+      const enquiryNumber = `JC-BLK-${Date.now().toString().slice(-6)}`;
 
       const { data: enquiry, error: enquiryError } = await supabase
         .from("bulk_enquiries")
         .insert({
           enquiry_number: enquiryNumber,
-          customer_name: String(body.customer_name).trim(),
-          phone_number: String(body.phone_number).trim(),
+          customer_name: String(customerName).trim(),
+          phone_number: String(phoneNumber).trim(),
           email: body.email || null,
-          business_name: String(body.business_name).trim(),
-          customer_type: body.customer_type || "Business",
+          business_name: String(businessName).trim(),
+          customer_type: customerType || "Retailer",
           city: body.city || "",
           state: body.state || "",
-          preferred_contact_method: body.preferred_contact_method || "Phone",
+          preferred_contact_method: preferredContactMethod || "Phone",
           gstin: body.gstin || null,
-          delivery_location: body.delivery_location || null,
-          additional_notes: body.additional_notes || null,
+          delivery_location: deliveryLocation || null,
+          additional_notes: additionalNotes || null,
           status: "New",
         })
         .select("id, enquiry_number")
         .single();
 
       if (enquiryError || !enquiry) {
-        console.error("Bulk enquiry insert:", enquiryError);
+        console.error("Bulk enquiry insert failed:", enquiryError);
         return res.status(500).json({
           error: enquiryError?.message || "Failed to create bulk enquiry",
         });
       }
 
-      if (body.items.length > 0) {
-        const items = body.items.map((item: any) => ({
-          enquiry_id: enquiry.id,
-          product_id: Number(item.product_id),
-          product_name: String(item.product_name || ""),
-          pack_size: String(item.pack_size || ""),
-          requested_quantity: Number(item.requested_quantity),
-          unit_label: item.unit_label || "Units",
-        }));
+      const enquiryItems = items.map((item: any) => ({
+        enquiry_id: enquiry.id,
+        ...item,
+      }));
 
-        const { error: itemsError } = await supabase
-          .from("bulk_enquiry_items")
-          .insert(items);
+      const { error: itemsError } = await supabase
+        .from("bulk_enquiry_items")
+        .insert(enquiryItems);
 
-        if (itemsError) {
-          console.error("Bulk enquiry items insert:", itemsError);
-          return res.status(500).json({
-            error:
-              "The enquiry was created, but saving its items failed. Contact the store with enquiry number " +
-              enquiry.enquiry_number,
-          });
-        }
+      if (itemsError) {
+        console.error("Bulk enquiry items insert failed:", itemsError);
+        return res.status(500).json({
+          error:
+            "Enquiry was created, but saving its products failed. Reference: " +
+            enquiry.enquiry_number,
+        });
       }
 
       return res.status(201).json({
