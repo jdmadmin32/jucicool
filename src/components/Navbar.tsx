@@ -91,10 +91,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden xs:inline">Track Order</span>
             </button>
             <a
-              href="tel:+919849012345"
+              href="https://api.whatsapp.com/send?phone=919393122122"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden md:flex items-center gap-1 text-white/90 hover:text-white"
             >
-              <PhoneCall className="w-3.5 h-3.5" /> +91 98490 12345
+              <PhoneCall className="w-3.5 h-3.5 text-[#FFC928]" /> WhatsApp: +91 9393122122
             </a>
           </div>
         </div>

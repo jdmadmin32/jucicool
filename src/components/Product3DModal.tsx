@@ -10,7 +10,8 @@ import {
   Check,
   Compass,
   Layers,
-  ZoomIn
+  ZoomIn,
+  MessageCircle
 } from 'lucide-react';
 import { Product } from '../types';
 import ModelViewer from './ModelViewer';
@@ -23,13 +24,15 @@ interface Product3DModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEnquireBulk?: (product: Product) => void;
+  onOrderNow?: (product: Product, quantity: number) => void;
 }
 
 export const Product3DModal: React.FC<Product3DModalProps> = ({
   product,
   isOpen,
   onClose,
-  onEnquireBulk
+  onEnquireBulk,
+  onOrderNow
 }) => {
   const { addToCart } = useCart();
   const { isDealerRetailer } = useAuth();
@@ -257,26 +260,39 @@ export const Product3DModal: React.FC<Product3DModalProps> = ({
 
             {/* Actions */}
             <div className="mt-6 pt-4 border-t border-[#E6EBDD] space-y-2.5">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={product.stock_quantity <= 0}
-                className={`w-full py-3 px-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-sm transition-all ${
-                  added
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-[#138443] hover:bg-[#0f6a35] text-white hover:shadow-md active:scale-[0.98]'
-                }`}
-              >
-                {added ? (
-                  <>
-                    <Check className="w-4 h-4" /> Added to Cart!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="w-4 h-4" /> Add to Cart (₹{(effectiveUnitPrice * (isDealerRetailer ? minQty : 1)).toFixed(0)})
-                  </>
-                )}
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={product.stock_quantity <= 0}
+                  className={`py-3 px-2 sm:px-3 rounded-2xl font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all text-xs sm:text-sm ${
+                    added
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white border-2 border-[#138443] text-[#138443] hover:bg-[#138443]/5'
+                  }`}
+                >
+                  <ShoppingBag className="w-4 h-4 text-[#138443]" />
+                  <span>{added ? 'Added!' : 'Add to Cart'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const orderQuantity = Math.max(qty, minQty);
+                    if (onOrderNow) {
+                      onOrderNow(product, orderQuantity);
+                    } else {
+                      addToCart(product, orderQuantity);
+                      onClose();
+                    }
+                  }}
+                  disabled={product.stock_quantity <= 0}
+                  className="py-3 px-2 sm:px-3 rounded-2xl font-bold flex items-center justify-center gap-1.5 bg-[#138443] hover:bg-[#0f6a35] text-white shadow-md active:scale-[0.98] transition-all text-xs sm:text-sm"
+                >
+                  <MessageCircle className="w-4 h-4 text-[#8CC63E] fill-[#8CC63E]" />
+                  <span className="truncate">Order Now</span>
+                </button>
+              </div>
 
               {onEnquireBulk && (
                 <button

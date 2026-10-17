@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Minus, ShoppingBag, Building2, Box, Image as ImageIcon, Maximize2, RotateCcw } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Building2, Box, Image as ImageIcon, Maximize2, RotateCcw, MessageCircle } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,7 @@ interface ProductDetailsModalProps {
   onClose: () => void;
   onEnquireBulk: (product: Product) => void;
   onOpen3DModal?: (product: Product) => void;
+  onOrderNow?: (product: Product, quantity: number) => void;
 }
 
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
@@ -18,6 +19,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   onClose,
   onEnquireBulk,
   onOpen3DModal,
+  onOrderNow,
 }) => {
   const { addToCart } = useCart();
   const { isDealerRetailer, openLoginModal } = useAuth();
@@ -55,6 +57,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     addToCart(product, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleOrderNow = () => {
+    if (onOrderNow) {
+      onOrderNow(product, qty);
+    } else {
+      addToCart(product, qty);
+      onClose();
+    }
   };
 
   return (
@@ -271,20 +282,29 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
         {/* Sticky Bottom Actions Bar (Mobile E-Commerce App Pattern) */}
         <div className="p-3 sm:p-4 border-t border-[#E6EBDD] bg-white space-y-2 pb-safe">
-          <button
-            onClick={handleAdd}
-            disabled={product.stock_quantity <= 0}
-            className={`w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 ${
-              added
-                ? 'bg-[#8CC63E] text-white'
-                : 'bg-[#138443] hover:bg-[#0d6131] text-white'
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4 text-[#8CC63E]" />
-            {added
-              ? 'Added to Cart!'
-              : `Add to Cart • ₹${(effectiveUnitPrice * qty).toFixed(2)} (${qty} units)`}
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleAdd}
+              disabled={product.stock_quantity <= 0}
+              className={`py-3 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-98 ${
+                added
+                  ? 'bg-[#8CC63E] text-white'
+                  : 'bg-white border-2 border-[#138443] text-[#138443] hover:bg-[#138443]/5'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4 text-[#138443]" />
+              <span>{added ? 'Added!' : 'Add to Cart'}</span>
+            </button>
+
+            <button
+              onClick={handleOrderNow}
+              disabled={product.stock_quantity <= 0}
+              className="py-3 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 bg-[#138443] hover:bg-[#0d6131] text-white shadow-md active:scale-98 transition-all"
+            >
+              <MessageCircle className="w-4 h-4 text-[#8CC63E] fill-[#8CC63E]" />
+              <span className="truncate">Order Now • ₹{(effectiveUnitPrice * qty).toFixed(0)}</span>
+            </button>
+          </div>
 
           <button
             onClick={() => {

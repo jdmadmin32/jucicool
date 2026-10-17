@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, ArrowRight, Loader2, PhoneCall, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, ArrowRight, Loader2, PhoneCall, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +16,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
   onClose,
   onOrderSuccess,
 }) => {
-  const { items, subtotal, deliveryFee, total, clearCart } = useCart();
+  const { items, subtotal, deliveryFee, total, clearCart, getItemPrice } = useCart();
   const { customerUser, isDealerRetailer } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -27,7 +27,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
     city: 'Hyderabad',
     state: 'Telangana',
     pincode: '500001',
-    paymentMethod: 'Direct Contact / Order Enquiry',
+    paymentMethod: 'Direct Contact / WhatsApp Order',
     notes: '',
   });
 
@@ -48,6 +48,49 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Build formatted WhatsApp message and redirect URL
+  const buildRetailWhatsAppUrl = (
+    orderNum: string,
+    currentItems: typeof items,
+    itemsSubtotal: number,
+    fee: number,
+    finalTotal: number
+  ) => {
+    const whatsappNumber = '919393122122';
+
+    const itemsSummary = currentItems.map((it, idx) => {
+      const uPrice = getItemPrice(it.product);
+      const lineTotal = uPrice * it.quantity;
+      return `${idx + 1}. *${it.product.name}* (${it.product.pack_size || it.product.packaging_type || ''})\n   • Quantity: *${it.quantity}*\n   • Unit Rate: ₹${uPrice.toFixed(2)}\n   • Item Total: ₹${lineTotal.toFixed(2)}`;
+    }).join('\n\n');
+
+    const messageLines = [
+      '🍹 *NEW ORDER - JUCI COOL* 🍹',
+      '━━━━━━━━━━━━━━━━━━━━━',
+      `📋 *Order Ref:* ${orderNum}`,
+      '',
+      '👤 *CUSTOMER DETAILS:*',
+      `• *Name:* ${formData.customerName.trim()}`,
+      `• *Phone:* ${formData.customerPhone.trim()}`,
+      formData.customerEmail.trim() ? `• *Email:* ${formData.customerEmail.trim()}` : null,
+      `• *Delivery Address:* ${formData.deliveryAddress.trim()}`,
+      `• *City / State:* ${formData.city.trim()}, ${formData.state.trim()} - ${formData.pincode.trim()}`,
+      formData.notes.trim() ? `• *Customer Notes:* ${formData.notes.trim()}` : null,
+      '',
+      '🛒 *ORDERED ITEMS & QUANTITIES:*',
+      itemsSummary,
+      '',
+      '━━━━━━━━━━━━━━━━━━━━━',
+      `💰 *Items Subtotal:* ₹${itemsSubtotal.toFixed(2)}`,
+      `🚚 *Delivery Fee:* ${fee === 0 ? 'FREE' : `₹${fee.toFixed(2)}`}`,
+      `💵 *TOTAL AMOUNT:* *₹${finalTotal.toFixed(2)}*`,
+      '━━━━━━━━━━━━━━━━━━━━━',
+      'Please confirm my order and share delivery details. Thank you!',
+    ].filter(Boolean).join('\n');
+
+    return `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(messageLines)}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -63,7 +106,20 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
       return;
     }
 
+    if (items.length === 0) {
+      setError('Your cart is empty. Please select products to order.');
+      return;
+    }
+
     setLoading(true);
+
+    // Snapshot current cart data before clearing
+    const itemsSnapshot = [...items];
+    const subtotalSnapshot = subtotal;
+    const feeSnapshot = deliveryFee;
+    const totalSnapshot = total;
+
+    let orderNumber = `JC-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
     try {
       const orderPayload = {
@@ -74,35 +130,65 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
         city: formData.city.trim(),
         state: formData.state.trim(),
         pincode: formData.pincode.trim(),
-        paymentMethod: 'Direct Contact / Order Enquiry',
+        paymentMethod: 'Direct Contact / WhatsApp Order',
         notes: formData.notes.trim() || undefined,
-        items: items.map(it => ({
+        items: itemsSnapshot.map(it => ({
           productId: it.product.id,
           quantity: it.quantity,
         })),
       };
 
       const result = await submitRetailOrder(orderPayload);
-
-      // Trigger Confetti Celebration!
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#138443', '#8CC63E', '#FFC928', '#F7941D']
-        });
-      } catch {
-        // Ignore if canvas-confetti fails in test environments
+      if (result && result.orderNumber) {
+        orderNumber = result.orderNumber;
       }
-
-      setConfirmedOrder(result);
-      clearCart();
-      onOrderSuccess(result.orderNumber);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit order enquiry. Please try again.');
-    } finally {
-      setLoading(false);
+      console.warn('Backend order recording notice (proceeding with WhatsApp):', err);
+    }
+
+    // Generate WhatsApp Link with all selected data
+    const whatsappUrl = buildRetailWhatsAppUrl(
+      orderNumber,
+      itemsSnapshot,
+      subtotalSnapshot,
+      feeSnapshot,
+      totalSnapshot
+    );
+
+    // Trigger Confetti Celebration!
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#138443', '#8CC63E', '#FFC928', '#F7941D']
+      });
+    } catch {
+      // Ignore if canvas-confetti fails
+    }
+
+    setConfirmedOrder({
+      orderNumber,
+      customerName: formData.customerName.trim(),
+      customerPhone: formData.customerPhone.trim(),
+      city: formData.city.trim(),
+      total: totalSnapshot,
+      whatsappUrl,
+      itemCount: itemsSnapshot.reduce((sum, it) => sum + it.quantity, 0),
+    });
+
+    clearCart();
+    onOrderSuccess(orderNumber);
+    setLoading(false);
+
+    // Redirect to WhatsApp with number 9393122122
+    try {
+      const win = window.open(whatsappUrl, '_blank');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = whatsappUrl;
+      }
+    } catch {
+      window.location.href = whatsappUrl;
     }
   };
 
@@ -115,14 +201,14 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
         {/* Header */}
         <div className="p-4 sm:p-6 bg-[#FFFEF7] border-b border-[#E6EBDD] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#138443]/10 text-[#138443] rounded-xl">
-              <PhoneCall className="w-5 h-5 text-[#138443]" />
+            <div className="p-2 bg-[#25D366]/15 text-[#138443] rounded-xl border border-[#25D366]/30">
+              <MessageCircle className="w-5 h-5 text-[#138443]" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-[#183D2B] font-poppins">
-                {isDealerRetailer ? 'Dealer Order Enquiry' : 'Send Order Enquiry / Get in Touch'}
+                {isDealerRetailer ? 'Dealer Order via WhatsApp' : 'Order via WhatsApp / Direct Delivery'}
               </h2>
-              <p className="text-xs text-[#68756B]">Direct door delivery and customer assistance across Telangana & AP</p>
+              <p className="text-xs text-[#68756B]">Direct dispatch to WhatsApp (+91 9393122122) • Telangana & AP</p>
             </div>
           </div>
           <button
@@ -138,43 +224,61 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
           {confirmedOrder ? (
             /* Order Confirmation View */
             <div className="text-center py-6 space-y-4">
-              <div className="w-16 h-16 bg-emerald-100 text-[#138443] rounded-full flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-10 h-10" />
+              <div className="w-16 h-16 bg-[#25D366]/15 text-[#138443] rounded-full flex items-center justify-center mx-auto shadow-inner border border-[#25D366]/30">
+                <CheckCircle2 className="w-10 h-10 text-[#138443]" />
               </div>
               <h3 className="text-2xl font-bold text-[#183D2B] font-poppins">
-                Order Enquiry Submitted Successfully!
+                Order Submitted & Redirected to WhatsApp!
               </h3>
               <p className="text-sm text-[#68756B] max-w-md mx-auto">
-                Thank you for choosing Juci Cool. Our dispatch desk will get in touch directly via Phone/WhatsApp to confirm your delivery and coordinate fulfillment.
+                We've sent your order details to Juci Cool on WhatsApp (<strong className="text-[#138443]">+91 9393122122</strong>). If WhatsApp did not open automatically, tap the button below.
               </p>
+
+              {/* Direct Open WhatsApp Button */}
+              <div className="py-2 flex justify-center">
+                <a
+                  href={confirmedOrder.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/30 transition-all transform hover:scale-105 active:scale-95"
+                >
+                  <MessageCircle className="w-5 h-5 fill-white text-[#25D366]" />
+                  <span>Open WhatsApp (+91 9393122122)</span>
+                  <ExternalLink className="w-4 h-4 opacity-80" />
+                </a>
+              </div>
 
               <div className="p-4 bg-[#FFFEF7] rounded-2xl border border-[#E6EBDD] max-w-sm mx-auto text-left space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-[#68756B]">Enquiry Reference:</span>
+                  <span className="text-[#68756B]">Order Reference:</span>
                   <span className="font-bold text-[#138443] text-sm">{confirmedOrder.orderNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#68756B]">Customer Name:</span>
-                  <span className="font-semibold text-[#183D2B]">{formData.customerName}</span>
+                  <span className="font-semibold text-[#183D2B]">{confirmedOrder.customerName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#68756B]">Contact Phone:</span>
-                  <span className="font-semibold text-[#183D2B]">{formData.customerPhone}</span>
+                  <span className="font-semibold text-[#183D2B]">{confirmedOrder.customerPhone}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#68756B]">City:</span>
-                  <span className="font-semibold text-[#183D2B]">{formData.city}</span>
+                  <span className="font-semibold text-[#183D2B]">{confirmedOrder.city}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#68756B]">Total Units:</span>
+                  <span className="font-semibold text-[#183D2B]">{confirmedOrder.itemCount} items</span>
                 </div>
                 <div className="flex justify-between border-t border-[#E6EBDD] pt-2">
                   <span className="text-[#68756B] font-medium">Estimated Value:</span>
-                  <span className="font-extrabold text-base text-[#138443]">₹{total.toFixed(2)}</span>
+                  <span className="font-extrabold text-base text-[#138443]">₹{confirmedOrder.total?.toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#138443] text-white hover:bg-[#0d6131] transition-colors"
+                  className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#183D2B] text-white hover:bg-[#138443] transition-colors"
                 >
                   Continue Browsing Catalog
                 </button>
@@ -189,13 +293,13 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
                 </div>
               )}
 
-              {/* No Payment Required Notice */}
+              {/* WhatsApp Direct Dispatch Notice */}
               <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-start gap-3">
-                <Sparkles className="w-4 h-4 text-[#138443] shrink-0 mt-0.5" />
+                <MessageCircle className="w-5 h-5 text-[#138443] shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <span className="font-bold text-[#183D2B] block">No Online Payment Required</span>
+                  <span className="font-bold text-[#183D2B] block">Direct WhatsApp Order Confirmation</span>
                   <p className="text-[#68756B] mt-0.5 leading-relaxed">
-                    Submit your order enquiry below. Our customer support desk will contact you directly to confirm delivery and fulfillment details.
+                    When you click submit, your selected items and quantities will be sent directly to our dispatch desk on WhatsApp (<strong>+91 9393122122</strong>) for immediate delivery coordination. No advance online payment needed.
                   </p>
                 </div>
               </div>
@@ -225,7 +329,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
                   <input
                     type="tel"
                     required
-                    placeholder="+91 98490 00000"
+                    placeholder="+91 93931 22122"
                     value={formData.customerPhone}
                     onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-[#E6EBDD] focus:outline-none focus:border-[#138443] focus:ring-1 focus:ring-[#138443]"
@@ -318,11 +422,12 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Submitting Your Enquiry...
+                    <Loader2 className="w-4 h-4 animate-spin" /> Submitting & Redirecting to WhatsApp...
                   </>
                 ) : (
                   <>
-                    <span>Submit Order Enquiry / Get in Touch</span>
+                    <MessageCircle className="w-5 h-5 fill-white text-[#138443]" />
+                    <span>Submit Order & Open in WhatsApp (+91 9393122122)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

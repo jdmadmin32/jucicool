@@ -4,7 +4,7 @@ import {
   fetchCategories
 } from './services/api';
 import { Product, ProductCategory } from './types';
-import { CartProvider } from './context/CartContext';
+import { CartProvider, useCart } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -46,6 +46,15 @@ export const MainApp: React.FC = () => {
   const [detailsProduct, setDetailsProduct] = useState<Product | null>(null);
   const [product3D, setProduct3D] = useState<Product | null>(null);
   const [trackingQuery, setTrackingQuery] = useState('');
+
+  const { addToCart } = useCart();
+
+  const handleDirectOrder = (prod: Product, quantity: number) => {
+    addToCart(prod, quantity);
+    setDetailsProduct(null);
+    setProduct3D(null);
+    setIsCheckoutModalOpen(true);
+  };
 
   // Load products and categories from DB API
   const loadCatalog = async () => {
@@ -277,6 +286,7 @@ export const MainApp: React.FC = () => {
         product={detailsProduct}
         onClose={() => setDetailsProduct(null)}
         onEnquireBulk={(p) => handleOpenBulkForProduct(p)}
+        onOrderNow={handleDirectOrder}
         onOpen3DModal={(p) => {
           setDetailsProduct(null);
           setProduct3D(p);
@@ -289,6 +299,7 @@ export const MainApp: React.FC = () => {
         isOpen={Boolean(product3D)}
         onClose={() => setProduct3D(null)}
         onEnquireBulk={(p) => handleOpenBulkForProduct(p)}
+        onOrderNow={handleDirectOrder}
       />
 
       {/* Live Order / Enquiry Tracking Modal */}

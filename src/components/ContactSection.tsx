@@ -13,6 +13,27 @@ export const ContactSection: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.contact || !formData.message) return;
+
+    // Send customer enquiry directly to WhatsApp
+    const waText = [
+      '💬 *CUSTOMER ENQUIRY - JUCI COOL* 💬',
+      '━━━━━━━━━━━━━━━━━━━━━',
+      `👤 *Name:* ${formData.name.trim()}`,
+      `📞 *Contact:* ${formData.contact.trim()}`,
+      `🏷️ *Subject:* ${formData.subject}`,
+      '',
+      '📝 *MESSAGE:*',
+      formData.message.trim(),
+      '━━━━━━━━━━━━━━━━━━━━━',
+    ].join('\n');
+
+    const waUrl = `https://api.whatsapp.com/send?phone=919393122122&text=${encodeURIComponent(waText)}`;
+    try {
+      window.open(waUrl, '_blank');
+    } catch {
+      window.location.href = waUrl;
+    }
+
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -32,7 +53,7 @@ export const ContactSection: React.FC = () => {
             Contact JDM Fruit Products
           </h2>
           <p className="text-xs sm:text-sm text-[#68756B] mt-2">
-            Have a question about our drinks, factory supply, retail orders, or distribution? Our Hyderabad team is here to assist.
+            Have a question about our drinks, factory supply, retail orders, or distribution? Our team is available directly on WhatsApp and phone.
           </p>
         </div>
 
@@ -60,19 +81,21 @@ export const ContactSection: React.FC = () => {
                 </div>
               </a>
 
-              {/* Phone */}
+              {/* Phone / WhatsApp */}
               <a
-                href="tel:+919849012345"
-                className="p-4 rounded-2xl bg-white border border-[#E6EBDD] shadow-sm flex items-start gap-3 active:scale-[0.98] transition-transform"
+                href="https://api.whatsapp.com/send?phone=919393122122"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-4 rounded-2xl bg-white border border-[#E6EBDD] shadow-sm flex items-start gap-3 active:scale-[0.98] transition-transform hover:border-[#138443]"
               >
-                <div className="p-2.5 rounded-xl bg-[#138443] text-white flex-shrink-0">
-                  <Phone className="w-5 h-5 text-[#8CC63E]" />
+                <div className="p-2.5 rounded-xl bg-[#25D366] text-white flex-shrink-0">
+                  <Phone className="w-5 h-5 text-white" />
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-xs sm:text-sm text-[#183D2B]">Call / WhatsApp</h4>
                   <p className="text-[11px] sm:text-xs text-[#68756B] mt-0.5">
-                    General: <span className="font-semibold text-[#138443]">+91 98490 12345</span><br />
-                    Wholesale: <span className="font-semibold text-[#138443]">+91 98490 12346</span>
+                    Orders & WhatsApp: <span className="font-bold text-[#138443]">+91 9393122122</span><br />
+                    Direct Contact: <span className="font-semibold text-[#138443]">9393122122</span>
                   </p>
                 </div>
               </a>

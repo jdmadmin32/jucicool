@@ -11,7 +11,9 @@ import {
   FileText,
   PhoneCall,
   Clock,
-  Sparkles
+  Sparkles,
+  MessageCircle,
+  ExternalLink
 } from 'lucide-react';
 import { Product } from '../types';
 import { submitBulkEnquiry } from '../services/api';
@@ -154,10 +156,14 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
     setStep(3);
   };
 
-  // Step 3: Final Submission
+  // Step 3: Final Submission with WhatsApp Redirection
+  const [bulkWhatsappUrl, setBulkWhatsappUrl] = useState<string>('');
+
   const handleSubmitEnquiry = async () => {
     setLoading(true);
     setError(null);
+
+    let enquiryNumber = `JC-BLK-${Math.floor(100000 + Math.random() * 900000)}`;
 
     try {
       const payload = {
@@ -180,12 +186,57 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
       };
 
       const result = await submitBulkEnquiry(payload);
-      setSubmittedRef(result.enquiryNumber);
-      setStep(4);
+      if (result && result.enquiryNumber) {
+        enquiryNumber = result.enquiryNumber;
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to submit bulk enquiry.');
-    } finally {
-      setLoading(false);
+      console.warn('Backend bulk enquiry notice (proceeding with WhatsApp):', err);
+    }
+
+    // Build WhatsApp URL with all selected products, quantities, and business details
+    const whatsappNumber = '919393122122';
+    const itemsList = selectedItems
+      .map((it, idx) => `${idx + 1}. *${it.productName}* (${it.packSize})\n   • Quantity: *${it.quantity} ${it.unitLabel}*`)
+      .join('\n\n');
+
+    const messageLines = [
+      '📦 *NEW WHOLESALE / BULK ORDER ENQUIRY - JUCI COOL* 📦',
+      '━━━━━━━━━━━━━━━━━━━━━',
+      `📋 *Enquiry Ref:* ${enquiryNumber}`,
+      '',
+      '🏢 *BUSINESS & CONTACT DETAILS:*',
+      `• *Contact Person:* ${businessData.customerName.trim()}`,
+      `• *Business / Shop Name:* ${businessData.businessName.trim()}`,
+      `• *Customer Type:* ${businessData.customerType}`,
+      `• *Phone Number:* ${businessData.phoneNumber.trim()}`,
+      businessData.email.trim() ? `• *Email:* ${businessData.email.trim()}` : null,
+      `• *City / State:* ${businessData.city.trim()}, ${businessData.state.trim()}`,
+      businessData.deliveryLocation.trim() ? `• *Delivery Location:* ${businessData.deliveryLocation.trim()}` : null,
+      businessData.gstin.trim() ? `• *GSTIN:* ${businessData.gstin.trim()}` : null,
+      businessData.additionalNotes.trim() ? `• *Notes:* ${businessData.additionalNotes.trim()}` : null,
+      '',
+      '📦 *REQUESTED PRODUCTS & QUANTITIES:*',
+      itemsList,
+      '',
+      '━━━━━━━━━━━━━━━━━━━━━',
+      'Please send the wholesale quotation with tiered pricing and delivery schedule. Thank you!',
+    ].filter(Boolean).join('\n');
+
+    const generatedWhatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(messageLines)}`;
+
+    setSubmittedRef(enquiryNumber);
+    setBulkWhatsappUrl(generatedWhatsappUrl);
+    setStep(4);
+    setLoading(false);
+
+    // Redirect to WhatsApp
+    try {
+      const win = window.open(generatedWhatsappUrl, '_blank');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = generatedWhatsappUrl;
+      }
+    } catch {
+      window.location.href = generatedWhatsappUrl;
     }
   };
 
@@ -605,11 +656,12 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Submitting Request...
+                      <Loader2 className="w-4 h-4 animate-spin" /> Submitting & Redirecting to WhatsApp...
                     </>
                   ) : (
                     <>
-                      <span>Submit Wholesale Price Enquiry</span>
+                      <MessageCircle className="w-4 h-4 fill-white text-[#138443]" />
+                      <span>Submit & Open in WhatsApp (+91 9393122122)</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -621,12 +673,12 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
           {/* STEP 4: SUBMISSION CONFIRMATION */}
           {step === 4 && (
             <div className="text-center py-6 space-y-4">
-              <div className="w-16 h-16 bg-emerald-100 text-[#138443] rounded-full flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-10 h-10" />
+              <div className="w-16 h-16 bg-[#25D366]/15 text-[#138443] rounded-full flex items-center justify-center mx-auto shadow-inner border border-[#25D366]/30">
+                <CheckCircle2 className="w-10 h-10 text-[#138443]" />
               </div>
 
               <h3 className="text-2xl font-bold text-[#183D2B] font-poppins">
-                Enquiry Submitted!
+                Wholesale Enquiry Submitted & Redirected to WhatsApp!
               </h3>
 
               <div className="p-4 bg-[#FFFEF7] border border-[#E6EBDD] rounded-2xl max-w-md mx-auto text-center space-y-2">
@@ -637,8 +689,23 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
               </div>
 
               <p className="text-sm text-[#183D2B] max-w-md mx-auto leading-relaxed">
-                “Your bulk price request has been submitted successfully. Our team will review your requirements and contact you with a quotation.”
+                “Your bulk quotation request with all selected products and quantities has been prepared and sent to Juci Cool sales desk on WhatsApp (<strong>+91 9393122122</strong>).”
               </p>
+
+              {bulkWhatsappUrl && (
+                <div className="py-2 flex justify-center">
+                  <a
+                    href={bulkWhatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/30 transition-all transform hover:scale-105 active:scale-95"
+                  >
+                    <MessageCircle className="w-5 h-5 fill-white text-[#25D366]" />
+                    <span>Open in WhatsApp (+91 9393122122)</span>
+                    <ExternalLink className="w-4 h-4 opacity-80" />
+                  </a>
+                </div>
+              )}
 
               <p className="text-xs text-[#68756B] max-w-sm mx-auto">
                 We will contact you via {businessData.preferredContactMethod} at {businessData.phoneNumber} with customized wholesale pricing, freight estimates, and GST invoices.
@@ -647,7 +714,7 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
               <div className="pt-4 flex justify-center gap-3">
                 <button
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#138443] text-white hover:bg-[#0d6131] shadow-md"
+                  className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#183D2B] text-white hover:bg-[#138443] shadow-md"
                 >
                   Back to Products
                 </button>

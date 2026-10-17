@@ -435,7 +435,7 @@ export function createProductLabelTexture(product?: Partial<Product> | null): TH
   ctx.font = '500 23px Arial, sans-serif';
   ctx.fillText('IDA Cherlapally, Hyderabad - 500051, TG', 66, mfgY + 74);
   ctx.fillText('FSSAI: 13624999000123', 66, mfgY + 108);
-  ctx.fillText('Consumer Care: +91 98490 12345', 66, mfgY + 142);
+  ctx.fillText('Consumer Care: +91 93931 22122', 66, mfgY + 142);
   ctx.fillText('Email: care@jucicool.com', 66, mfgY + 176);
 
   // ══════════════════════════════════════════

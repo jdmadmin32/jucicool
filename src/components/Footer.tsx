@@ -55,7 +55,7 @@ export const Footer: React.FC<FooterProps> = ({
             </p>
             <div className="text-[11px] sm:text-xs text-white/70 space-y-0.5">
               <div>📍 Hyderabad, Telangana, India</div>
-              <div>📞 <a href="tel:+919849012345" className="hover:text-[#8CC63E]">+91 98490 12345</a></div>
+              <div>📞 <a href="https://api.whatsapp.com/send?phone=919393122122" target="_blank" rel="noopener noreferrer" className="hover:text-[#8CC63E]">WhatsApp / Call: +91 9393122122</a></div>
               <div>✉️ <a href="mailto:info@jucicool.com" className="hover:text-[#8CC63E]">info@jucicool.com</a></div>
             </div>
           </div>
