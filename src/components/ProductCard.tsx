@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Eye, Plus, Minus, Building2, Check, Sparkles } from 'lucide-react';
+import { ShoppingBag, Eye, Plus, Minus, Building2, Check, Sparkles, Box } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -8,12 +8,14 @@ interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
   onEnquireBulk: (product: Product) => void;
+  onView3D?: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onViewDetails,
   onEnquireBulk,
+  onView3D,
 }) => {
   const { addToCart, items, updateQuantity } = useCart();
   const { isDealerRetailer, openLoginModal } = useAuth();
@@ -72,6 +74,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105 active:scale-95"
           loading="lazy"
         />
+
+        {/* 3D Interactive View Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onView3D) {
+              onView3D(product);
+            } else {
+              onViewDetails(product);
+            }
+          }}
+          className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 bg-white/95 hover:bg-[#138443] text-[#183D2B] hover:text-white rounded-xl shadow-sm hover:shadow-md border border-[#E6EBDD] text-[10px] sm:text-xs font-bold transition-all transform hover:scale-105 active:scale-95 group/btn"
+          title="Interactive 3D View"
+        >
+          <Box className="w-3.5 h-3.5 text-[#138443] group-hover/btn:text-white transition-colors animate-pulse" />
+          <span className="font-poppins">3D View</span>
+        </button>
 
         {/* Quick View Button on Desktop Hover */}
         <button

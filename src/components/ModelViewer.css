@@ -1,0 +1,46 @@
+.model-viewer-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+  background: radial-gradient(circle at 50% 50%, rgba(243, 248, 237, 0.9) 0%, rgba(230, 240, 222, 0.5) 100%);
+  border-radius: 1.25rem;
+}
+
+.model-viewer-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  border-radius: inherit;
+  transition: opacity 0.4s ease;
+}
+
+.model-viewer-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(19, 132, 67, 0.15);
+  border-top-color: #138443;
+  border-radius: 50%;
+  animation: model-viewer-spin 0.8s linear infinite;
+}
+
+.model-viewer-loading-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #183D2B;
+  letter-spacing: 0.02em;
+}
+
+@keyframes model-viewer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

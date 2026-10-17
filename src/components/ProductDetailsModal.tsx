@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Minus, ShoppingBag, Building2 } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Building2, Box, Image as ImageIcon, Maximize2, RotateCcw } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import ModelViewer from './ModelViewer';
+import { getProductModelUrl } from '../utils/productModels';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   onClose: () => void;
   onEnquireBulk: (product: Product) => void;
+  onOpen3DModal?: (product: Product) => void;
 }
 
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   product,
   onClose,
   onEnquireBulk,
+  onOpen3DModal,
 }) => {
   const { addToCart } = useCart();
   const { isDealerRetailer, openLoginModal } = useAuth();
@@ -21,11 +25,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [activeImage, setActiveImage] = useState<string>('');
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [viewMode, setViewMode] = useState<'photos' | '3d'>('photos');
 
   useEffect(() => {
     if (product) {
       setActiveImage(product.shot_image_url || product.image_url || '');
       setQty(isDealerRetailer ? (product.min_wholesale_qty || 10) : 1);
+      setViewMode('photos');
     }
   }, [product, isDealerRetailer]);
 
@@ -68,38 +74,104 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         {/* Scrollable Container */}
         <div className="overflow-y-auto flex-1">
           <div className="grid grid-cols-1 md:grid-cols-2">
-            {/* Image Column */}
+            {/* Image / 3D Column */}
             <div className="bg-gradient-to-tr from-[#FFF7DE] via-[#F4F8F0] to-[#E9F4E3] p-4 sm:p-6 flex flex-col items-center justify-between relative border-b md:border-b-0 md:border-r border-[#E6EBDD]">
-              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold text-[#138443] border border-[#E6EBDD]">
-                {product.flavor}
-              </div>
-
-              <div className="flex-1 flex items-center justify-center p-2 sm:p-4 min-h-[180px] sm:min-h-[220px]">
-                <img
-                  src={activeImage}
-                  alt={product.name}
-                  className="max-h-48 sm:max-h-64 max-w-full object-contain drop-shadow-md transition-all duration-300"
-                />
-              </div>
-
-              {/* Extra Image Thumbnails */}
-              {allImages.length > 1 && (
-                <div className="w-full flex items-center justify-center gap-2 pt-2 border-t border-[#E6EBDD]/60 overflow-x-auto no-scrollbar">
-                  {allImages.map((imgUrl, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setActiveImage(imgUrl)}
-                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl p-1 bg-white border transition-all shrink-0 ${
-                        activeImage === imgUrl
-                          ? 'border-[#138443] ring-2 ring-[#138443]/30 shadow-sm'
-                          : 'border-[#E6EBDD] hover:border-[#138443]/50 opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain" />
-                    </button>
-                  ))}
+              <div className="w-full flex items-center justify-between gap-2 mb-2">
+                <div className="bg-white/90 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold text-[#138443] border border-[#E6EBDD]">
+                  {product.flavor}
                 </div>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-xl border border-[#E6EBDD] shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('photos')}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                      viewMode === 'photos'
+                        ? 'bg-[#183D2B] text-white shadow-xs'
+                        : 'text-[#68756B] hover:text-[#183D2B]'
+                    }`}
+                  >
+                    <ImageIcon className="w-3 h-3" />
+                    <span>Photos</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('3d')}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                      viewMode === '3d'
+                        ? 'bg-[#138443] text-white shadow-xs'
+                        : 'text-[#68756B] hover:text-[#183D2B]'
+                    }`}
+                  >
+                    <Box className="w-3 h-3 animate-pulse" />
+                    <span>3D View</span>
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === '3d' ? (
+                <div className="w-full flex-1 flex flex-col items-center justify-center relative min-h-[220px] sm:min-h-[260px]">
+                  <ModelViewer
+                    url={getProductModelUrl(product)}
+                    product={product}
+                    width="100%"
+                    height={260}
+                    environment="studio"
+                    environmentIntensity={1.2}
+                    exposure={1.05}
+                    autoRotate={true}
+                    autoRotateSpeed={0.5}
+                    dragRotate={true}
+                    fit={0.82}
+                    shadow={true}
+                    shadowOpacity={0.4}
+                  />
+
+                  {/* 3D Action Tools */}
+                  <div className="w-full flex items-center justify-between gap-2 mt-2 pt-2 border-t border-[#E6EBDD]/60 text-[10px] text-[#68756B]">
+                    <span>Drag to rotate • Scroll to zoom</span>
+                    {onOpen3DModal && (
+                      <button
+                        type="button"
+                        onClick={() => onOpen3DModal(product)}
+                        className="inline-flex items-center gap-1 font-bold text-[#138443] hover:underline"
+                      >
+                        <Maximize2 className="w-3 h-3" /> Full 3D Studio
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1 flex items-center justify-center p-2 sm:p-4 min-h-[180px] sm:min-h-[220px]">
+                    <img
+                      src={activeImage}
+                      alt={product.name}
+                      className="max-h-48 sm:max-h-64 max-w-full object-contain drop-shadow-md transition-all duration-300"
+                    />
+                  </div>
+
+                  {/* Extra Image Thumbnails */}
+                  {allImages.length > 1 && (
+                    <div className="w-full flex items-center justify-center gap-2 pt-2 border-t border-[#E6EBDD]/60 overflow-x-auto no-scrollbar">
+                      {allImages.map((imgUrl, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setActiveImage(imgUrl)}
+                          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl p-1 bg-white border transition-all shrink-0 ${
+                            activeImage === imgUrl
+                              ? 'border-[#138443] ring-2 ring-[#138443]/30 shadow-sm'
+                              : 'border-[#E6EBDD] hover:border-[#138443]/50 opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

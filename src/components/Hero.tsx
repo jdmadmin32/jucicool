@@ -1,5 +1,6 @@
-import React from 'react';
-import { ShoppingBag, Building2, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingBag, Building2, Sparkles, CheckCircle2, ArrowRight, Box, Image as ImageIcon } from 'lucide-react';
+import ModelViewer from './ModelViewer';
 
 interface HeroProps {
   onShopClick: () => void;
@@ -7,6 +8,7 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onShopClick, onBulkClick }) => {
+  const [show3D, setShow3D] = useState(false);
   return (
     <section id="hero" className="relative overflow-hidden pt-4 pb-10 sm:pt-6 sm:pb-16 lg:py-20 bg-gradient-to-b from-[#FFFEF7] via-[#F4F8F0] to-[#FFFEF7]">
       {/* Decorative Background Fruit Glows */}
@@ -77,15 +79,59 @@ export const Hero: React.FC<HeroProps> = ({ onShopClick, onBulkClick }) => {
             <div className="relative mx-auto max-w-xs sm:max-w-md lg:max-w-none">
               <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white p-2 sm:p-4 shadow-card border border-[#E6EBDD]">
                 <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-gradient-to-tr from-[#FFF7DE] via-[#F4F8F0] to-[#E9F4E3] border border-[#E6EBDD]/60 p-2">
-                  <img
-                    src="/images/juci-cool-master.png"
-                    alt="Juci Cool Product Range"
-                    className="w-full h-auto object-cover rounded-lg sm:rounded-xl shadow-inner"
-                  />
-                  <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full shadow-md border border-[#E6EBDD] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#F7941D]" />
-                    <span className="text-[10px] sm:text-xs font-bold text-[#183D2B]">Verified Product Lineup</span>
+                  {/* Top Switcher & Badges */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full shadow-sm border border-[#E6EBDD] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#F7941D]" />
+                      <span className="text-[10px] sm:text-xs font-bold text-[#183D2B]">
+                        {show3D ? 'Interactive 3D Model' : 'Verified Lineup'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShow3D(!show3D)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold border transition-all shadow-xs ${
+                        show3D
+                          ? 'bg-[#138443] text-white border-[#138443]'
+                          : 'bg-white hover:bg-[#F2F8EC] text-[#183D2B] border-[#E6EBDD]'
+                      }`}
+                    >
+                      <Box className={`w-3.5 h-3.5 ${show3D ? 'animate-spin' : 'text-[#138443]'}`} />
+                      <span>{show3D ? 'Show 2D Banner' : 'View in 3D'}</span>
+                    </button>
                   </div>
+
+                  {show3D ? (
+                    <div className="relative w-full h-[260px] sm:h-[310px] rounded-lg sm:rounded-xl overflow-hidden bg-white/40">
+                      <ModelViewer
+                        url="/models/mango-bottle.glb"
+                        product={{ name: 'Juci Cool Mango Juice', flavor: 'Alphonso Mango', pack_size: '250 ml', packaging_type: 'PET Bottle' }}
+                        width="100%"
+                        height="100%"
+                        environment="studio"
+                        environmentIntensity={1.3}
+                        exposure={1.05}
+                        autoRotate={true}
+                        autoRotateSpeed={0.6}
+                        dragRotate={true}
+                        turntable={false}
+                        float={0.3}
+                        shadow={true}
+                        shadowOpacity={0.4}
+                        fit={0.82}
+                      />
+                      <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold text-[#183D2B] border border-[#E6EBDD]">
+                        3D Mango Bottle • Drag to rotate
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src="/images/juci-cool-master.png"
+                      alt="Juci Cool Product Range"
+                      className="w-full h-auto object-cover rounded-lg sm:rounded-xl shadow-inner"
+                    />
+                  )}
                 </div>
               </div>
             </div>

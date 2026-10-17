@@ -25,6 +25,7 @@ export interface Product {
   shot_image_url?: string;
   extra_images?: string[];
   image_records?: { id: number; image_url: string; display_order: number }[];
+  model_url?: string;
   is_active: number;
   featured: number;
 }

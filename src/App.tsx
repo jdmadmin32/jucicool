@@ -10,6 +10,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
+import { Product3DModal } from './components/Product3DModal';
 import { CartDrawer } from './components/CartDrawer';
 import { RetailCheckoutModal } from './components/RetailCheckoutModal';
 import { BulkEnquiryModal } from './components/BulkEnquiryModal';
@@ -43,6 +44,7 @@ export const MainApp: React.FC = () => {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [detailsProduct, setDetailsProduct] = useState<Product | null>(null);
+  const [product3D, setProduct3D] = useState<Product | null>(null);
   const [trackingQuery, setTrackingQuery] = useState('');
 
   // Load products and categories from DB API
@@ -214,6 +216,7 @@ export const MainApp: React.FC = () => {
                 product={prod}
                 onViewDetails={(p) => setDetailsProduct(p)}
                 onEnquireBulk={(p) => handleOpenBulkForProduct(p)}
+                onView3D={(p) => setProduct3D(p)}
               />
             ))}
           </div>
@@ -273,6 +276,18 @@ export const MainApp: React.FC = () => {
       <ProductDetailsModal
         product={detailsProduct}
         onClose={() => setDetailsProduct(null)}
+        onEnquireBulk={(p) => handleOpenBulkForProduct(p)}
+        onOpen3DModal={(p) => {
+          setDetailsProduct(null);
+          setProduct3D(p);
+        }}
+      />
+
+      {/* Interactive 3D Product Experience Modal */}
+      <Product3DModal
+        product={product3D}
+        isOpen={Boolean(product3D)}
+        onClose={() => setProduct3D(null)}
         onEnquireBulk={(p) => handleOpenBulkForProduct(p)}
       />
 
