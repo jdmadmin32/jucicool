@@ -1,370 +1,462 @@
 import * as THREE from 'three';
 import { Product } from '../types';
 
+// ─────────────────────────────────────────────────
+// PALETTE RESOLVER
+// ─────────────────────────────────────────────────
+interface Palette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  bgTop: string;
+  bgBottom: string;
+  text: string;
+  flavorEmoji: string;
+}
+
+function getPalette(product?: Partial<Product> | null): Palette {
+  const n = (product?.name || '').toLowerCase();
+  const f = (product?.flavor || '').toLowerCase();
+
+  if (n.includes('guava') || f.includes('guava')) {
+    return { primary: '#C0175A', secondary: '#E8538B', accent: '#FFB8D0',
+      bgTop: '#FFF0F5', bgBottom: '#FFD6E5', text: '#5C0024', flavorEmoji: '🍈' };
+  }
+  if (n.includes('pineapple') || f.includes('pineapple')) {
+    return { primary: '#C08C00', secondary: '#E5A900', accent: '#FFDE59',
+      bgTop: '#FFFBEB', bgBottom: '#FFF3B0', text: '#5C4000', flavorEmoji: '🍍' };
+  }
+  if (n.includes('water') || n.includes('mineral')) {
+    return { primary: '#0065A8', secondary: '#0099D6', accent: '#90E0EF',
+      bgTop: '#EFF9FF', bgBottom: '#BDE9FF', text: '#003358', flavorEmoji: '💧' };
+  }
+  if (n.includes('aloe') || f.includes('aloe')) {
+    return { primary: '#138443', secondary: '#8CC63E', accent: '#D4ED91',
+      bgTop: '#F5FBF0', bgBottom: '#DDF0C6', text: '#0B3D22', flavorEmoji: '🌿' };
+  }
+  if (n.includes('candy') || f.includes('candy') || f.includes('berry')) {
+    return { primary: '#C0175A', secondary: '#F7941D', accent: '#FFDE59',
+      bgTop: '#FFF0F8', bgBottom: '#FFD6EE', text: '#5C0024', flavorEmoji: '🍬' };
+  }
+  if (n.includes('jelly') || f.includes('jelly')) {
+    return { primary: '#C0175A', secondary: '#8CC63E', accent: '#FFB400',
+      bgTop: '#FFF4F8', bgBottom: '#FFE0EA', text: '#5C0024', flavorEmoji: '🍮' };
+  }
+  // Default: mango / orange
+  return { primary: '#138443', secondary: '#F7941D', accent: '#FFDE59',
+    bgTop: '#FFFBEB', bgBottom: '#FFF1C2', text: '#183D2B', flavorEmoji: '🥭' };
+}
+
+// ─────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────
+function fillRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number
+) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fill();
+}
+
+function fillRoundRectTop(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number
+) {
+  // Rounded top corners only
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string, x: number, y: number, maxW: number, lineH: number
+) {
+  const words = text.split(' ');
+  let line = '';
+  let curY = y;
+  words.forEach((word, i) => {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxW && i > 0) {
+      ctx.fillText(line.trim(), x, curY);
+      line = word + ' ';
+      curY += lineH;
+    } else {
+      line = test;
+    }
+  });
+  ctx.fillText(line.trim(), x, curY);
+}
+
+// ─────────────────────────────────────────────────
+// MAIN LABEL GENERATOR — portrait 1024 × 2048
+// Wraps cleanly on cylinder UV (U=0→1 horizontal, V=0→1 vertical)
+// ─────────────────────────────────────────────────
 export function createProductLabelTexture(product?: Partial<Product> | null): THREE.CanvasTexture {
+  // Portrait canvas maps better onto a vertical cylinder label
+  const W = 1024;
+  const H = 2048;
   const canvas = document.createElement('canvas');
-  canvas.width = 2048;
-  canvas.height = 1024;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const name = (product?.name || 'Juci Cool Mango Drink').toUpperCase();
-  const flavor = (product?.flavor || 'Alphonso Mango').toUpperCase();
-  const packSize = product?.pack_size || '250 ml';
-  const pkgType = product?.packaging_type || 'PET Bottle';
+  const pal = getPalette(product);
 
-  // Determine color palette based on product flavor/name
-  let primaryColor = '#138443'; // Emerald green
-  let secondaryColor = '#F7941D'; // Mango Orange
-  let accentColor = '#FFDE59'; // Warm yellow
-  let bgGradientStart = '#FFF9E6';
-  let bgGradientEnd = '#FFF1C2';
+  const name       = (product?.name || 'Juci Cool Drink').toUpperCase();
+  const flavor     = product?.flavor || 'Mango';
+  const packSize   = product?.pack_size || '250 ml';
 
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('guava') || (product?.flavor || '').toLowerCase().includes('guava')) {
-    primaryColor = '#138443';
-    secondaryColor = '#EE5D7B';
-    accentColor = '#FFAAC1';
-    bgGradientStart = '#FFF0F3';
-    bgGradientEnd = '#FFE3E8';
-  } else if (lowerName.includes('pineapple') || (product?.flavor || '').toLowerCase().includes('pineapple')) {
-    primaryColor = '#138443';
-    secondaryColor = '#E5A900';
-    accentColor = '#FFDE59';
-    bgGradientStart = '#FFFDEB';
-    bgGradientEnd = '#FFF7B8';
-  } else if (lowerName.includes('water') || lowerName.includes('mineral')) {
-    primaryColor = '#0077B6';
-    secondaryColor = '#00A8E8';
-    accentColor = '#90E0EF';
-    bgGradientStart = '#F0F9FF';
-    bgGradientEnd = '#E0F2FE';
-  } else if (lowerName.includes('aloe')) {
-    primaryColor = '#138443';
-    secondaryColor = '#8CC63E';
-    accentColor = '#D4ED91';
-    bgGradientStart = '#F5FAF0';
-    bgGradientEnd = '#E6F4DB';
-  } else if (lowerName.includes('candy')) {
-    primaryColor = '#EA245D';
-    secondaryColor = '#F7941D';
-    accentColor = '#FFDE59';
-    bgGradientStart = '#FFF0F5';
-    bgGradientEnd = '#FFE4EC';
-  } else if (lowerName.includes('jelly')) {
-    primaryColor = '#E83151';
-    secondaryColor = '#8CC63E';
-    accentColor = '#FFB400';
-    bgGradientStart = '#FFF4F6';
-    bgGradientEnd = '#FFE5EA';
-  }
+  // ══════════════════════════════════════════
+  // 1. BACKGROUND GRADIENT (top→bottom)
+  // ══════════════════════════════════════════
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0,    pal.bgTop);
+  bg.addColorStop(0.45, pal.bgBottom);
+  bg.addColorStop(1,    pal.bgTop);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
 
-  // 1. Overall Background
-  const bgGrad = ctx.createLinearGradient(0, 0, 2048, 0);
-  bgGrad.addColorStop(0, bgGradientStart);
-  bgGrad.addColorStop(0.5, bgGradientEnd);
-  bgGrad.addColorStop(1, bgGradientStart);
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 2048, 1024);
+  // Subtle center radial glow
+  const glow = ctx.createRadialGradient(W / 2, H * 0.38, 50, W / 2, H * 0.38, 420);
+  glow.addColorStop(0, pal.secondary + '22');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
 
-  // Decorative subtle background wave/curves
-  ctx.fillStyle = primaryColor + '0A';
-  ctx.beginPath();
-  ctx.arc(1024, 512, 600, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Top & Bottom Metallic Borders
-  const goldGrad = ctx.createLinearGradient(0, 0, 2048, 0);
-  goldGrad.addColorStop(0, '#D4AF37');
-  goldGrad.addColorStop(0.25, '#FFF2B2');
-  goldGrad.addColorStop(0.5, '#D4AF37');
-  goldGrad.addColorStop(0.75, '#FFF2B2');
-  goldGrad.addColorStop(1, '#D4AF37');
-
-  // Top header ribbon
-  ctx.fillStyle = primaryColor;
-  ctx.fillRect(0, 0, 2048, 70);
-  ctx.fillStyle = goldGrad;
-  ctx.fillRect(0, 70, 2048, 14);
-
-  // Bottom footer ribbon
-  ctx.fillStyle = goldGrad;
-  ctx.fillRect(0, 940, 2048, 14);
-  ctx.fillStyle = primaryColor;
-  ctx.fillRect(0, 954, 2048, 70);
-
-  // Header ribbon text repeated
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 24px Poppins, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('★ 100% AUTHENTIC FRUIT GOODNESS ★ HYDERABAD PLANT ★ SERVE CHILLED ★', 1024, 45);
-  ctx.fillText('RECYCLE FOR A GREENER TOMORROW • PREMIUM HYGIENE STANDARDS • KEEP CITY CLEAN', 1024, 995);
-
-  // ==========================================
-  // SECTION 2: FRONT CENTER LABEL (x: 600 to 1448)
-  // ==========================================
-  const centerX = 1024;
-
-  // Main Brand Crest Box
+  // Diagonal stripe texture (very faint)
   ctx.save();
-  ctx.fillStyle = primaryColor;
-  ctx.shadowColor = 'rgba(0,0,0,0.25)';
-  ctx.shadowBlur = 15;
-  ctx.shadowOffsetY = 6;
-  ctx.beginPath();
-  ctx.roundRect(centerX - 340, 130, 680, 140, 24);
-  ctx.fill();
+  ctx.globalAlpha = 0.03;
+  ctx.fillStyle = pal.primary;
+  for (let i = -H; i < W + H; i += 55) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0); ctx.lineTo(i + 28, 0);
+    ctx.lineTo(i + 28 + H, H); ctx.lineTo(i + H, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
   ctx.restore();
 
-  // Crest Gold Rim
-  ctx.strokeStyle = goldGrad;
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.roundRect(centerX - 340, 130, 680, 140, 24);
-  ctx.stroke();
+  // ══════════════════════════════════════════
+  // GOLD GRADIENT (reusable)
+  // ══════════════════════════════════════════
+  const goldGrad = ctx.createLinearGradient(0, 0, W, 0);
+  goldGrad.addColorStop(0,    '#8B6914');
+  goldGrad.addColorStop(0.25, '#FFD700');
+  goldGrad.addColorStop(0.5,  '#8B6914');
+  goldGrad.addColorStop(0.75, '#FFD700');
+  goldGrad.addColorStop(1,    '#8B6914');
 
-  // Brand Name
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 76px Poppins, Montserrat, sans-serif';
+  // ══════════════════════════════════════════
+  // 2. TOP HEADER BAR
+  // ══════════════════════════════════════════
+  ctx.fillStyle = pal.primary;
+  ctx.fillRect(0, 0, W, 168);
+  ctx.fillStyle = goldGrad;
+  ctx.fillRect(0, 168, W, 8);
+
+  // Brand Name "JUCI" + "COOL" stacked
   ctx.textAlign = 'center';
-  ctx.fillText('JUCI COOL', centerX, 222);
+  ctx.textBaseline = 'alphabetic';
+  ctx.letterSpacing = '6px';
 
-  // Brand Subtitle
-  ctx.fillStyle = accentColor;
-  ctx.font = 'bold 22px Poppins, sans-serif';
-  ctx.letterSpacing = '4px';
-  ctx.fillText('★ REAL FRUIT • REAL TASTE ★', centerX, 252);
+  // Drop shadow for punch
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 4;
 
-  // Flavor Badge Pill
-  ctx.fillStyle = secondaryColor;
-  ctx.beginPath();
-  ctx.roundRect(centerX - 300, 310, 600, 75, 38);
-  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 88px Arial, sans-serif';
+  ctx.fillText('JUCI', W / 2, 90);
+
+  ctx.fillStyle = pal.accent;
+  ctx.font = 'bold 80px Arial, sans-serif';
+  ctx.fillText('COOL', W / 2, 162);
+
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.letterSpacing = '0px';
+
+  // ══════════════════════════════════════════
+  // 3. FLAVOR BADGE — full-width pill
+  // ══════════════════════════════════════════
+  const badgeY = 198;
+  ctx.fillStyle = pal.secondary;
+  fillRoundRect(ctx, 50, badgeY, W - 100, 110, 55);
+
   ctx.strokeStyle = '#FFFFFF';
   ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(50, badgeY, W - 100, 110, 55);
   ctx.stroke();
 
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 42px Poppins, sans-serif';
-  ctx.fillText(flavor, centerX, 362);
-
-  // Product Full Name
-  ctx.fillStyle = '#183D2B';
-  ctx.font = 'bold 36px Poppins, sans-serif';
-  ctx.fillText(name, centerX, 440);
-
-  // Quality Tagline
-  ctx.fillStyle = '#55695C';
-  ctx.font = '600 24px Poppins, sans-serif';
-  ctx.fillText('Crafted with Handpicked Orchard Harvests', centerX, 480);
-
-  // Center Decorative Fruit Seal
-  ctx.save();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.shadowColor = 'rgba(0,0,0,0.15)';
-  ctx.shadowBlur = 10;
-  ctx.beginPath();
-  ctx.arc(centerX, 620, 100, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = primaryColor;
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  ctx.fillStyle = primaryColor;
-  ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillText('100% PURE', centerX, 580);
-  ctx.fillStyle = secondaryColor;
-  ctx.font = '900 36px Poppins, sans-serif';
-  ctx.fillText('FRUIT', centerX, 620);
-  ctx.fillStyle = '#183D2B';
-  ctx.font = 'bold 18px Poppins, sans-serif';
-  ctx.fillText('PULP', centerX, 655);
-  ctx.restore();
-
-  // Net Quantity & Veg Mark
-  // Green Veg Mark (Square with Circle)
-  const vegX = centerX - 260;
-  const vegY = 770;
-  ctx.strokeStyle = '#138443';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(vegX, vegY, 50, 50);
-  ctx.fillStyle = '#138443';
-  ctx.beginPath();
-  ctx.arc(vegX + 25, vegY + 25, 14, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Net Quantity Pill
-  ctx.fillStyle = primaryColor;
-  ctx.beginPath();
-  ctx.roundRect(centerX - 150, 765, 300, 60, 30);
-  ctx.fill();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 30px Poppins, sans-serif';
-  ctx.fillText(`NET QTY: ${packSize}`, centerX, 806);
-
-  // Serve Chilled Badge
-  ctx.fillStyle = '#183D2B';
-  ctx.font = 'bold 22px Poppins, sans-serif';
-  ctx.fillText('❄ BEST SERVED CHILLED • SHAKE WELL', centerX, 875);
-
-  // ==========================================
-  // SECTION 1: LEFT PANEL - NUTRITION FACTS (x: 80 to 520)
-  // ==========================================
-  const leftX = 100;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.beginPath();
-  ctx.roundRect(leftX, 140, 420, 750, 20);
-  ctx.fill();
-  ctx.strokeStyle = '#E6EBDD';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // Nutrition Title
-  ctx.fillStyle = primaryColor;
-  ctx.beginPath();
-  ctx.roundRect(leftX, 140, 420, 65, [20, 20, 0, 0]);
-  ctx.fill();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 28px Poppins, sans-serif';
+  ctx.font = 'bold 62px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('NUTRITIONAL FACTS', leftX + 210, 183);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pal.flavorEmoji + '  ' + flavor.toUpperCase(), W / 2, badgeY + 55);
 
-  ctx.fillStyle = '#68756B';
-  ctx.font = '500 18px Poppins, sans-serif';
-  ctx.fillText('Approx. Values per 100 ml', leftX + 210, 235);
+  // ══════════════════════════════════════════
+  // 4. PRODUCT NAME
+  // ══════════════════════════════════════════
+  ctx.fillStyle = pal.text;
+  ctx.font = 'bold 48px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
 
-  // Table rows
-  const nutrients = [
-    ['Energy', '54 kcal'],
+  let displayName = name.startsWith('JUCI COOL ') ? name.slice(10) : name;
+  wrapText(ctx, displayName, W / 2, 370, W - 80, 58);
+
+  // Separator
+  ctx.strokeStyle = pal.primary + '44';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([14, 9]);
+  ctx.beginPath();
+  ctx.moveTo(60, 460); ctx.lineTo(W - 60, 460);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ══════════════════════════════════════════
+  // 5. QUALITY SEAL CIRCLE
+  // ══════════════════════════════════════════
+  const sealCX = W / 2;
+  const sealCY = 612;
+  const sealR  = 128;
+
+  // Outer glow
+  const sealGlow = ctx.createRadialGradient(sealCX, sealCY, sealR * 0.5, sealCX, sealCY, sealR * 1.5);
+  sealGlow.addColorStop(0, pal.accent + '55');
+  sealGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = sealGlow;
+  ctx.beginPath();
+  ctx.arc(sealCX, sealCY, sealR * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // White circle with shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.15)';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(sealCX, sealCY, sealR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Primary ring
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.arc(sealCX, sealCY, sealR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Accent inner ring
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(sealCX, sealCY, sealR - 14, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Stars around ring
+  ctx.font = '22px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+    ctx.fillStyle = pal.secondary;
+    ctx.fillText('★', sealCX + (sealR + 26) * Math.cos(a), sealCY + (sealR + 26) * Math.sin(a));
+  }
+
+  // Seal text
+  ctx.fillStyle = pal.primary;
+  ctx.font = 'bold 28px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('100%', sealCX, sealCY - 46);
+
+  ctx.fillStyle = pal.secondary;
+  ctx.font = 'bold 50px Arial, sans-serif';
+  ctx.fillText('PURE', sealCX, sealCY + 4);
+
+  ctx.fillStyle = pal.text;
+  ctx.font = 'bold 26px Arial, sans-serif';
+  ctx.fillText('FRUIT PULP', sealCX, sealCY + 48);
+
+  // ══════════════════════════════════════════
+  // 6. PACK SIZE + VEG MARK
+  // ══════════════════════════════════════════
+  const rowY2 = 796;
+  // Veg symbol
+  ctx.strokeStyle = '#22A845';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(W / 2 - 228, rowY2, 52, 52);
+  ctx.fillStyle = '#22A845';
+  ctx.beginPath();
+  ctx.arc(W / 2 - 228 + 26, rowY2 + 26, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pack size pill
+  ctx.fillStyle = pal.primary;
+  fillRoundRect(ctx, W / 2 - 155, rowY2, 340, 56, 28);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 32px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`NET QTY: ${packSize}`, W / 2 + 15, rowY2 + 28);
+
+  // Tagline
+  ctx.fillStyle = pal.text + 'BB';
+  ctx.font = 'italic 32px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Real Fruit. Real Taste. 🍃', W / 2, 920);
+
+  // ══════════════════════════════════════════
+  // 7. SERVE CHILLED RIBBON
+  // ══════════════════════════════════════════
+  ctx.fillStyle = goldGrad;
+  ctx.fillRect(0, 958, W, 5);
+  ctx.fillStyle = pal.primary + 'EE';
+  ctx.fillRect(0, 963, W, 72);
+  ctx.fillStyle = goldGrad;
+  ctx.fillRect(0, 1035, W, 5);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 36px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('❄  BEST SERVED CHILLED  ❄', W / 2, 999);
+  ctx.letterSpacing = '0px';
+
+  // ══════════════════════════════════════════
+  // 8. NUTRITION FACTS (compact card)
+  // ══════════════════════════════════════════
+  const nutY = 1058;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0,0,0,0.08)';
+  ctx.shadowBlur = 14;
+  fillRoundRect(ctx, 36, nutY, W - 72, 360, 22);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = pal.primary + '33';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(36, nutY, W - 72, 360, 22);
+  ctx.stroke();
+
+  // Card header
+  ctx.fillStyle = pal.primary;
+  fillRoundRectTop(ctx, 36, nutY, W - 72, 58, 22);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 30px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('NUTRITIONAL FACTS  (per 100 ml)', W / 2, nutY + 29);
+
+  const nutrients: [string, string][] = [
+    ['Energy',        '54 kcal'],
     ['Carbohydrates', '13.2 g'],
-    ['Total Sugars', '12.4 g'],
-    ['Added Sugars', '1.8 g'],
-    ['Dietary Fiber', '0.6 g'],
-    ['Protein', '0.2 g'],
-    ['Fat (All types)', '0.0 g'],
-    ['Vitamin C', '24.0 mg'],
-    ['Potassium', '45.0 mg'],
-    ['Sodium', '8.5 mg']
+    ['Total Sugars',  '12.4 g'],
+    ['Protein',       '0.2 g'],
+    ['Fat',           '0.0 g'],
+    ['Vitamin C',     '24 mg'],
   ];
 
-  ctx.textAlign = 'left';
-  let rowY = 270;
+  ctx.textBaseline = 'alphabetic';
+  let ny = nutY + 90;
   nutrients.forEach(([key, val], idx) => {
-    ctx.fillStyle = idx % 2 === 0 ? '#F9FAF6' : '#FFFFFF';
-    ctx.fillRect(leftX + 15, rowY - 22, 390, 36);
-
-    ctx.fillStyle = '#183D2B';
-    ctx.font = '600 20px Poppins, sans-serif';
-    ctx.fillText(key, leftX + 25, rowY);
-
-    ctx.fillStyle = primaryColor;
-    ctx.font = 'bold 20px Poppins, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(val, leftX + 395, rowY);
+    ctx.fillStyle = idx % 2 === 0 ? '#F7FCF4' : '#FFFFFF';
+    ctx.fillRect(38, ny - 28, W - 76, 50);
+    ctx.fillStyle = pal.text;
+    ctx.font = '500 30px Arial, sans-serif';
     ctx.textAlign = 'left';
-    rowY += 40;
+    ctx.fillText(key, 68, ny);
+    ctx.fillStyle = pal.primary;
+    ctx.font = 'bold 30px Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(val, W - 68, ny);
+    ny += 50;
   });
 
-  // Ingredients text
-  ctx.fillStyle = '#183D2B';
-  ctx.font = 'bold 18px Poppins, sans-serif';
-  ctx.fillText('INGREDIENTS:', leftX + 25, 715);
-  ctx.fillStyle = '#68756B';
-  ctx.font = '500 16px Poppins, sans-serif';
-  ctx.fillText('Treated Water, Authentic Fruit Pulp (25%),', leftX + 25, 742);
-  ctx.fillText('Sugar, Acidity Regulator (INS 330),', leftX + 25, 768);
-  ctx.fillText('Ascorbic Acid (Vitamin C), Natural Colors.', leftX + 25, 794);
-
-  // Storage
-  ctx.fillStyle = '#D9534F';
-  ctx.font = 'bold 16px Poppins, sans-serif';
-  ctx.fillText('Store in cool, dry & hygienic place.', leftX + 25, 845);
-
-  // ==========================================
-  // SECTION 3: RIGHT PANEL - MFG & BARCODE (x: 1528 to 1968)
-  // ==========================================
-  const rightX = 1528;
+  // ══════════════════════════════════════════
+  // 9. INGREDIENTS
+  // ══════════════════════════════════════════
+  const ingY = 1462;
   ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0,0,0,0.07)';
+  ctx.shadowBlur = 12;
+  fillRoundRect(ctx, 36, ingY, W - 72, 250, 22);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = pal.primary + '33';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(rightX, 140, 420, 750, 20);
-  ctx.fill();
-  ctx.strokeStyle = '#E6EBDD';
-  ctx.lineWidth = 3;
+  ctx.roundRect(36, ingY, W - 72, 250, 22);
   ctx.stroke();
 
-  // Header
-  ctx.fillStyle = primaryColor;
-  ctx.beginPath();
-  ctx.roundRect(rightX, 140, 420, 65, [20, 20, 0, 0]);
-  ctx.fill();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 26px Poppins, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('MFG & QUALITY SEAL', rightX + 210, 183);
-
-  // FSSAI Logo
-  ctx.fillStyle = '#183D2B';
-  ctx.font = '900 48px Poppins, sans-serif';
-  ctx.fillText('fssai', rightX + 210, 260);
-  ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillStyle = '#68756B';
-  ctx.fillText('Lic. No. 13624999000123', rightX + 210, 295);
-
-  // Manufacturer Details
+  ctx.fillStyle = pal.primary;
+  ctx.font = 'bold 30px Arial, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#183D2B';
-  ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillText('MANUFACTURED & MARKETED BY:', rightX + 30, 350);
-  ctx.font = 'bold 22px Poppins, sans-serif';
-  ctx.fillStyle = primaryColor;
-  ctx.fillText('JDM FRUIT PRODUCTS PVT. LTD.', rightX + 30, 380);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('INGREDIENTS:', 68, ingY + 44);
+  ctx.fillStyle = '#555';
+  ctx.font = '500 26px Arial, sans-serif';
+  ctx.fillText('Treated Water, Fruit Pulp (25%), Sugar,', 68, ingY + 86);
+  ctx.fillText('Acidity Regulator (INS 330), Ascorbic', 68, ingY + 120);
+  ctx.fillText('Acid (Vit. C), Natural Colors & Flavors.', 68, ingY + 154);
+  ctx.fillStyle = '#C0175A';
+  ctx.font = 'bold 24px Arial, sans-serif';
+  ctx.fillText('Store cool & dry. Shake before serve.', 68, ingY + 210);
 
-  ctx.fillStyle = '#68756B';
-  ctx.font = '500 18px Poppins, sans-serif';
-  ctx.fillText('Plot No. 42, Food Processing Park,', rightX + 30, 415);
-  ctx.fillText('IDA Cherlapally, Hyderabad - 500051', rightX + 30, 445);
-  ctx.fillText('Telangana State, India.', rightX + 30, 475);
-  ctx.fillText('Consumer Care: +91 98490 12345', rightX + 30, 510);
-  ctx.fillText('Email: care@jucicool.com', rightX + 30, 540);
+  // ══════════════════════════════════════════
+  // 10. MFG INFO
+  // ══════════════════════════════════════════
+  const mfgY = 1730;
+  ctx.fillStyle = '#F4F9F4';
+  fillRoundRect(ctx, 36, mfgY, W - 72, 190, 18);
+  ctx.strokeStyle = pal.primary + '33';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(36, mfgY, W - 72, 190, 18);
+  ctx.stroke();
 
-  // Batch & Dates
-  ctx.fillStyle = '#F4F8F0';
-  ctx.fillRect(rightX + 25, 570, 370, 100);
-  ctx.strokeStyle = '#E6EBDD';
-  ctx.strokeRect(rightX + 25, 570, 370, 100);
+  ctx.fillStyle = pal.primary;
+  ctx.font = 'bold 25px Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('MFG: JDM FRUIT PRODUCTS PVT. LTD.', 66, mfgY + 38);
+  ctx.fillStyle = '#444';
+  ctx.font = '500 23px Arial, sans-serif';
+  ctx.fillText('IDA Cherlapally, Hyderabad - 500051, TG', 66, mfgY + 74);
+  ctx.fillText('FSSAI: 13624999000123', 66, mfgY + 108);
+  ctx.fillText('Consumer Care: +91 98490 12345', 66, mfgY + 142);
+  ctx.fillText('Email: care@jucicool.com', 66, mfgY + 176);
 
-  ctx.fillStyle = '#183D2B';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText('BN : JC/2026/04', rightX + 40, 602);
-  ctx.fillText('MFD: 15/10/2026', rightX + 40, 630);
-  ctx.fillText('USE BEFORE 6 MONTHS FROM MFD', rightX + 40, 656);
+  // ══════════════════════════════════════════
+  // 11. BOTTOM FOOTER
+  // ══════════════════════════════════════════
+  ctx.fillStyle = goldGrad;
+  ctx.fillRect(0, H - 88, W, 5);
+  ctx.fillStyle = pal.primary;
+  ctx.fillRect(0, H - 83, W, 83);
 
-  // Realistic Barcode
-  const barX = rightX + 40;
-  const barY = 700;
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(barX, barY, 340, 110);
-  ctx.fillStyle = '#000000';
-
-  // Draw authentic barcode bars
-  const pattern = [3,1,2,1,4,2,1,3,2,1,3,2,1,4,1,2,3,1,2,4,1,3,2,1,3,2,1,4,2,1,3,1,2,1,4,2,1,3,2];
-  let curX = barX + 15;
-  for (let i = 0; i < pattern.length; i++) {
-    const barWidth = pattern[i] * 2.2;
-    if (i % 2 === 0) {
-      ctx.fillRect(curX, barY + 10, barWidth, 70);
-    }
-    curX += barWidth + 2;
-  }
+  ctx.font = 'bold 25px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.font = 'bold 20px monospace';
-  ctx.fillText('8  901234  567890', rightX + 210, barY + 100);
+  ctx.textBaseline = 'middle';
+  ctx.letterSpacing = '1px';
+  ctx.fillText('♻ RECYCLABLE  •  100% AUTHENTIC  •  HYDERABAD', W / 2, H - 43);
+  ctx.letterSpacing = '0px';
 
-  // Recycling Logo & Clean India mark
-  ctx.fillStyle = primaryColor;
-  ctx.font = 'bold 16px Poppins, sans-serif';
-  ctx.fillText('♻ 100% RECYCLABLE PET BOTTLE', rightX + 210, 855);
-
-  // Create Three.js CanvasTexture
+  // ══════════════════════════════════════════
+  // 12. THREE.JS TEXTURE
+  // ══════════════════════════════════════════
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
