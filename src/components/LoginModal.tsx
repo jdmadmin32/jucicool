@@ -16,6 +16,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { CartoonEyesAvatar } from './ui/cloud-watch-form';
 
 export const LoginModal: React.FC = () => {
   const {
@@ -35,6 +36,7 @@ export const LoginModal: React.FC = () => {
   // Form states
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [isTypingPassword, setIsTypingPassword] = useState(false);
 
   // Register form fields
   const [fullName, setFullName] = useState('');
@@ -188,7 +190,15 @@ export const LoginModal: React.FC = () => {
         </div>
 
         {/* Modal Body / Scrollable Form */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+          {/* Interactive Cartoon Face with Eyes Tracking & Blinking */}
+          <div className="py-2 px-3 bg-gradient-to-b from-[#FFFDF5] to-[#F5F9F0] rounded-2xl border border-[#E6EBDD] flex flex-col items-center justify-center shadow-inner">
+            <CartoonEyesAvatar isTyping={isTypingPassword} />
+            <div className="text-[10px] text-[#68756B] mt-0.5 font-semibold">
+              {isTypingPassword ? "🙈 Shh! Peeking away while you type password..." : "👀 Eyes track your cursor • Move your mouse around!"}
+            </div>
+          </div>
+
           {/* Error / Success Messages */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
@@ -233,6 +243,8 @@ export const LoginModal: React.FC = () => {
                     type="password"
                     required
                     value={password}
+                    onFocus={() => setIsTypingPassword(true)}
+                    onBlur={() => setIsTypingPassword(false)}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-[#E6EBDD] bg-white focus:outline-none focus:border-[#138443] focus:ring-1 focus:ring-[#138443]"
@@ -371,6 +383,8 @@ export const LoginModal: React.FC = () => {
                     required
                     minLength={6}
                     value={password}
+                    onFocus={() => setIsTypingPassword(true)}
+                    onBlur={() => setIsTypingPassword(false)}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
                     className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-[#E6EBDD] bg-white focus:outline-none focus:border-[#138443]"
