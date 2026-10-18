@@ -1286,7 +1286,7 @@ export default async function handler(
 
       const { data, error } = await supabase
         .from("users")
-        .select("id, full_name, email, phone, role, company_name, customer_type, city, state, created_at")
+        .select("id, full_name, email, phone, role, business_name, customer_type, city, state, created_at")
         .order("created_at", { ascending: false });
 
       if (error) return res.status(500).json({ error: error.message });
@@ -1431,6 +1431,123 @@ export default async function handler(
         .eq("id", enquiryId);
 
       return res.status(201).json({ success: true, quotation });
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMIN: Dealer Management
+    // GET    /api/admin/dealers          — list all dealers
+    // POST   /api/admin/dealers          — create a dealer account
+    // DELETE /api/admin/dealers/:id      — delete a dealer account
+    // -------------------------------------------------------------------------
+
+    // GET /api/admin/dealers
+    if (path === "/admin/dealers" && req.method === "GET") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, full_name, phone, role, business_name, customer_type, city, state, created_at")
+        .in("customer_type", ["Dealer", "Retailer", "dealer_retailer"])
+        .order("created_at", { ascending: false });
+
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json(data || []);
+    }
+
+    // POST /api/admin/dealers — create a new dealer account
+    if (path === "/admin/dealers" && req.method === "POST") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const body = req.body || {};
+      const { email, password, businessName, fullName, phone, city, state } = body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Dealer email and password are required" });
+      }
+
+      const cleanEmail = String(email).toLowerCase().trim();
+
+      // Check for existing account
+      const { data: existing } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (existing) {
+        return res.status(400).json({ error: "An account with this email already exists" });
+      }
+
+      const storeName = businessName ? String(businessName).trim() : (fullName ? `${String(fullName).trim()} Store` : "Authorized Dealer");
+      const contactName = fullName ? String(fullName).trim() : storeName;
+
+      // Hash password
+      const salt = bcrypt.genSaltSync(10);
+      const passwordHash = bcrypt.hashSync(String(password), salt);
+
+      const { data: newDealer, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          email: cleanEmail,
+          password_hash: passwordHash,
+          full_name: contactName,
+          phone: phone ? String(phone).trim() : null,
+          role: "customer",
+          business_name: storeName,
+          customer_type: "Dealer",
+          city: city ? String(city).trim() : "Hyderabad",
+          state: state ? String(state).trim() : "Telangana",
+        })
+        .select("id, email, full_name, business_name, phone, city, state")
+        .single();
+
+      if (insertError) {
+        console.error("Create dealer error:", insertError);
+        return res.status(500).json({ error: insertError.message });
+      }
+
+      return res.status(201).json({
+        message: "Dealer account created successfully",
+        dealerId: newDealer.id,
+        dealer: newDealer,
+      });
+    }
+
+    // DELETE /api/admin/dealers/:id
+    const adminDealerDeleteMatch = path.match(/^\/admin\/dealers\/(\d+)$/);
+    if (adminDealerDeleteMatch && req.method === "DELETE") {
+      const user = verifyToken(req);
+      if (!user) return res.status(401).json({ error: "Authentication required" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
+
+      const dealerId = Number(adminDealerDeleteMatch[1]);
+
+      // Verify exists and is not admin
+      const { data: dealer, error: findError } = await supabase
+        .from("users")
+        .select("id, email, role")
+        .eq("id", dealerId)
+        .maybeSingle();
+
+      if (findError || !dealer) {
+        return res.status(404).json({ error: "Dealer account not found" });
+      }
+      if (dealer.role === "admin") {
+        return res.status(400).json({ error: "Cannot delete an administrator account" });
+      }
+
+      const { error: deleteError } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", dealerId);
+
+      if (deleteError) return res.status(500).json({ error: deleteError.message });
+
+      return res.status(200).json({ message: "Dealer account deleted successfully" });
     }
 
     // -------------------------------------------------------------------------
