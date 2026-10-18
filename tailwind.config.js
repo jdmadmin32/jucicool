@@ -7,6 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
+        card: {
+          DEFAULT: "#FFFFFF",
+          foreground: "#183D2B",
+        },
+        border: "#E6EBDD",
+        "sidebar-border": "#E6EBDD",
+        primary: {
+          DEFAULT: "#138443",
+          foreground: "#FFFFFF",
+        },
+        secondary: {
+          DEFAULT: "#8CC63E",
+          foreground: "#183D2B",
+        },
+        muted: {
+          DEFAULT: "#F4F8F0",
+          foreground: "#68756B",
+        },
+        accent: {
+          DEFAULT: "#FFC928",
+          foreground: "#183D2B",
+        },
         brand: {
           green: "#138443",
           lime: "#8CC63E",

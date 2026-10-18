@@ -126,46 +126,46 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#183D2B]">
+          <nav className="hidden lg:flex items-center gap-1 p-1 bg-[#F4F8F0]/80 border border-[#E6EBDD] rounded-full text-xs font-semibold text-[#183D2B]">
             <button
               onClick={() => { onSelectCategory('all'); scrollToSection('hero'); }}
-              className="hover:text-[#138443] transition-colors font-semibold"
+              className="px-3.5 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all"
             >
               Home
             </button>
             <button
               onClick={() => handleNavClick()}
-              className="hover:text-[#138443] transition-colors"
+              className="px-3.5 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all"
             >
-              Shop Products
+              Shop All
             </button>
             <button
               onClick={() => handleNavClick('mango-drinks')}
-              className="hover:text-[#138443] transition-colors flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1.5"
             >
-              <span className="w-2 h-2 rounded-full bg-[#FFC928]"></span> Mango Drinks
+              <span className="w-2 h-2 rounded-full bg-[#FFC928]"></span> Mango
             </button>
             <button
               onClick={() => handleNavClick('fruit-drinks')}
-              className="hover:text-[#138443] transition-colors flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1.5"
             >
-              <span className="w-2 h-2 rounded-full bg-[#8CC63E]"></span> Fruit Drinks
+              <span className="w-2 h-2 rounded-full bg-[#8CC63E]"></span> Juices
             </button>
             <button
               onClick={() => handleNavClick('candy')}
-              className="hover:text-[#138443] transition-colors flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1.5"
             >
-              <span className="w-2 h-2 rounded-full bg-[#F7941D]"></span> Candy & Jelly
+              <span className="w-2 h-2 rounded-full bg-[#F7941D]"></span> Candies
             </button>
             <button
               onClick={() => scrollToSection('about-section')}
-              className="hover:text-[#138443] transition-colors"
+              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all text-[#68756B]"
             >
-              About Us
+              About
             </button>
             <button
               onClick={() => scrollToSection('contact-section')}
-              className="hover:text-[#138443] transition-colors"
+              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all text-[#68756B]"
             >
               Contact
             </button>
