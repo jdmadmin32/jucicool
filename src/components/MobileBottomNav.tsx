@@ -6,6 +6,7 @@ import {
   Truck,
   ShoppingBag,
   User,
+  Store,
   ArrowRight,
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -17,6 +18,7 @@ interface MobileBottomNavProps {
   onShopClick: () => void;
   onBulkClick: () => void;
   onTrackingClick: () => void;
+  onDealerClick?: () => void;
   currentView?: string;
 }
 
@@ -25,6 +27,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onShopClick,
   onBulkClick,
   onTrackingClick,
+  onDealerClick,
 }) => {
   const { itemCount, total, setIsCartOpen } = useCart();
   const { isDealerRetailer, customerUser, isCustomerAuthenticated, openLoginModal } = useAuth();
@@ -73,11 +76,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       },
     },
     {
-      label: isCustomerAuthenticated && customerUser ? customerUser.fullName.split(' ')[0] : "Account",
-      icon: User,
+      label: isCustomerAuthenticated && customerUser ? "Dealer Hub" : "Dealer",
+      icon: Store,
       onClick: () => {
         setActiveIndex(5);
-        openLoginModal('dealer');
+        if (isCustomerAuthenticated && onDealerClick) {
+          onDealerClick();
+        } else {
+          openLoginModal('dealer');
+        }
       },
     },
   ];

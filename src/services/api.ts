@@ -5,6 +5,7 @@ import {
   BulkEnquiry,
   WholesaleOrder,
   CustomerRecord,
+  DealerRecord,
   AdminDashboardData,
 } from '../types';
 
@@ -607,3 +608,60 @@ export async function fetchAdminReports(): Promise<any> {
 
   return res.json();
 }
+
+// ----------------------------------------------------
+// ADMIN DEALER MANAGEMENT
+// ----------------------------------------------------
+
+export async function fetchAdminDealers(): Promise<DealerRecord[]> {
+  const res = await fetch(`${API_BASE}/admin/dealers`, {
+    headers: { ...getAuthHeader() },
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to load dealers');
+  }
+
+  return res.json();
+}
+
+export async function createAdminDealer(payload: {
+  email: string;
+  password: string;
+  businessName?: string;
+  fullName?: string;
+  phone?: string;
+  city?: string;
+  state?: string;
+}): Promise<any> {
+  const res = await fetch(`${API_BASE}/admin/dealers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to create dealer');
+  }
+
+  return data;
+}
+
+export async function deleteAdminDealer(id: number): Promise<any> {
+  const res = await fetch(`${API_BASE}/admin/dealers/${id}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeader() },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to delete dealer');
+  }
+
+  return data;
+}
+

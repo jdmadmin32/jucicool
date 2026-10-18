@@ -22,6 +22,7 @@ interface NavbarProps {
   onOpenBulkModal: () => void;
   onOpenTrackingModal: () => void;
   onOpenAdminPortal: () => void;
+  onOpenDealerPortal?: () => void;
   onSelectCategory: (category: string) => void;
   onSearchChange: (search: string) => void;
   searchTerm: string;
@@ -31,6 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBulkModal,
   onOpenTrackingModal,
   onOpenAdminPortal,
+  onOpenDealerPortal,
   onSelectCategory,
   onSearchChange,
   searchTerm,
@@ -239,15 +241,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
                         {customerUser.role === 'admin'
                           ? 'Admin Officer'
-                          : isDealerRetailer
-                          ? 'Dealer Account (Bulk Rates)'
-                          : 'General Customer'}
+                          : 'Authorized Dealer (Wholesale)'}
                       </div>
                     </div>
 
-                    {isDealerRetailer && (
-                      <div className="px-4 py-2 bg-emerald-50/70 text-[11px] text-emerald-900 border-b border-emerald-100">
-                        ⚡ Wholesale bulk pricing is active on your dealer account.
+                    {onOpenDealerPortal && (
+                      <div className="p-1 border-b border-[#E6EBDD]">
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            onOpenDealerPortal();
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-[#138443] hover:bg-emerald-50 rounded-xl transition-colors text-left"
+                        >
+                          <Store className="w-4 h-4 text-[#138443]" />
+                          <span>Open Dealer Wholesale Page</span>
+                        </button>
                       </div>
                     )}
 
@@ -284,11 +293,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={() => openLoginModal('dealer')}
-                className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full font-bold text-[11px] sm:text-xs transition-all border border-[#138443]/30 bg-white hover:bg-emerald-50 text-[#138443] shadow-sm active:scale-95"
-                title="Login with your account"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-full font-bold text-[11px] sm:text-xs transition-all border border-[#138443]/30 bg-white hover:bg-emerald-50 text-[#138443] shadow-sm active:scale-95"
+                title="Authorized Dealer Wholesale Sign In"
               >
-                <UserIcon className="w-3.5 h-3.5 text-[#138443]" />
-                <span>Login</span>
+                <Store className="w-3.5 h-3.5 text-[#138443]" />
+                <span>Dealer Login</span>
               </button>
             )}
 

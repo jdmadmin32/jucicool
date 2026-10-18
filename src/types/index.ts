@@ -245,3 +245,17 @@ export interface RegisterData {
   city?: string;
   state?: string;
 }
+
+export interface DealerRecord {
+  id: number;
+  email: string;
+  full_name: string;
+  phone?: string;
+  role: string;
+  business_name?: string;
+  customer_type: string;
+  city?: string;
+  state?: string;
+  created_at: string;
+}
+

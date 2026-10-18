@@ -20,6 +20,7 @@ import { AboutSection } from './components/AboutSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { AdminPortal } from './components/Admin/AdminPortal';
+import { DealerPortalPage } from './components/Dealer/DealerPortalPage';
 import { LoginModal } from './components/LoginModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import {
@@ -31,7 +32,7 @@ import {
 } from 'lucide-react';
 
 export const MainApp: React.FC = () => {
-  const [activeView, setActiveView] = useState<'storefront' | 'admin'>('storefront');
+  const [activeView, setActiveView] = useState<'storefront' | 'admin' | 'dealer'>('storefront');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -47,7 +48,7 @@ export const MainApp: React.FC = () => {
   const [product3D, setProduct3D] = useState<Product | null>(null);
   const [trackingQuery, setTrackingQuery] = useState('');
 
-  const { addToCart } = useCart();
+  const { addToCart, setIsCartOpen } = useCart();
 
   const handleDirectOrder = (prod: Product, quantity: number) => {
     addToCart(prod, quantity);
@@ -108,6 +109,15 @@ export const MainApp: React.FC = () => {
     return <AdminPortal onBackToStore={() => setActiveView('storefront')} />;
   }
 
+  if (activeView === 'dealer') {
+    return (
+      <DealerPortalPage
+        onBackToStore={() => setActiveView('storefront')}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFEF7] pb-20 md:pb-0">
       {/* Navbar */}
@@ -115,6 +125,7 @@ export const MainApp: React.FC = () => {
         onOpenBulkModal={handleOpenGeneralBulk}
         onOpenTrackingModal={() => setIsTrackingModalOpen(true)}
         onOpenAdminPortal={() => setActiveView('admin')}
+        onOpenDealerPortal={() => setActiveView('dealer')}
         onSelectCategory={(slug) => setSelectedCategory(slug)}
         onSearchChange={(query) => setSearchTerm(query)}
         searchTerm={searchTerm}
@@ -258,6 +269,7 @@ export const MainApp: React.FC = () => {
         onShopClick={scrollToCatalog}
         onBulkClick={handleOpenGeneralBulk}
         onTrackingClick={() => setIsTrackingModalOpen(true)}
+        onDealerClick={() => setActiveView('dealer')}
       />
 
       {/* Cart Drawer */}
@@ -309,8 +321,8 @@ export const MainApp: React.FC = () => {
         defaultQuery={trackingQuery}
       />
 
-      {/* Customer & Dealer Login / Register Modal */}
-      <LoginModal />
+      {/* Authorized Dealer Login Modal */}
+      <LoginModal onDealerLoginSuccess={() => setActiveView('dealer')} />
     </div>
   );
 };

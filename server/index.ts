@@ -1449,6 +1449,80 @@ app.delete('/api/admin/products/:id/images/:imageId', authenticateToken, require
   res.json({ message: 'Product image deleted' });
 });
 
+// 6.5 Dealer Accounts Management (Admin Only)
+app.get('/api/admin/dealers', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const dealers = db.prepare(`
+    SELECT id, email, full_name, phone, role, business_name, customer_type, city, state, created_at
+    FROM users
+    WHERE customer_type IN ('Dealer', 'Retailer', 'dealer_retailer') OR role = 'dealer'
+    ORDER BY created_at DESC
+  `).all();
+  res.json(dealers);
+});
+
+app.post('/api/admin/dealers', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const { email, password, businessName, fullName, phone, city, state } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Dealer email and password are required' });
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const existing = db.prepare('SELECT id FROM users WHERE lower(email) = ?').get(cleanEmail);
+  if (existing) {
+    return res.status(400).json({ error: 'An account with this email already exists' });
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const passwordHash = bcrypt.hashSync(password, salt);
+  const storeName = businessName ? businessName.trim() : (fullName ? `${fullName.trim()} Store` : 'Authorized Dealer');
+  const contactName = fullName ? fullName.trim() : storeName;
+
+  const result = db.prepare(`
+    INSERT INTO users (email, password_hash, full_name, phone, role, business_name, customer_type, city, state)
+    VALUES (?, ?, ?, ?, 'customer', ?, 'Dealer', ?, ?)
+  `).run(
+    cleanEmail,
+    passwordHash,
+    contactName,
+    phone ? phone.trim() : null,
+    storeName,
+    city ? city.trim() : 'Hyderabad',
+    state ? state.trim() : 'Telangana'
+  );
+
+  logAction('CREATE_DEALER', req.user!.fullName, `Created dealer account for ${cleanEmail} (${storeName})`);
+  res.status(201).json({
+    message: 'Dealer account created successfully',
+    dealerId: result.lastInsertRowid,
+    dealer: {
+      id: result.lastInsertRowid,
+      email: cleanEmail,
+      fullName: contactName,
+      businessName: storeName,
+      phone: phone || null,
+      city: city || 'Hyderabad',
+      state: state || 'Telangana'
+    }
+  });
+});
+
+app.delete('/api/admin/dealers/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const dealerId = req.params.id;
+  const dealer = db.prepare('SELECT * FROM users WHERE id = ?').get(dealerId) as any;
+  if (!dealer) {
+    return res.status(404).json({ error: 'Dealer account not found' });
+  }
+
+  if (dealer.role === 'admin') {
+    return res.status(400).json({ error: 'Cannot delete an administrator account' });
+  }
+
+  db.prepare('DELETE FROM users WHERE id = ?').run(dealerId);
+  logAction('DELETE_DEALER', req.user!.fullName, `Deleted dealer account #${dealerId} (${dealer.email})`);
+  res.json({ message: 'Dealer account deleted successfully' });
+});
+
 // 7. Centralized Customer Directory
 app.get('/api/admin/customers', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   // Aggregate unique customers across retail and wholesale

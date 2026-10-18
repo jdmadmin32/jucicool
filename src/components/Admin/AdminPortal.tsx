@@ -15,7 +15,9 @@ import {
   Loader2,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  Store,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DashboardOverview } from './DashboardOverview';
@@ -23,6 +25,7 @@ import { RetailOrdersTab } from './RetailOrdersTab';
 import { BulkEnquiriesTab } from './BulkEnquiriesTab';
 import { WholesaleOrdersTab } from './WholesaleOrdersTab';
 import { ProductInventoryTab } from './ProductInventoryTab';
+import { DealersTab } from './DealersTab';
 import { CustomerDirectoryTab } from './CustomerDirectoryTab';
 import { ReportsTab } from './ReportsTab';
 
@@ -59,6 +62,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
     { id: 'bulk-enquiries', label: 'Bulk Enquiries', icon: Building2, highlight: true },
     { id: 'wholesale-orders', label: 'Wholesale Orders', icon: PackageCheck },
     { id: 'inventory', label: 'Products & Inventory', icon: Boxes },
+    { id: 'dealers', label: 'Dealer Accounts', icon: Store, highlight: true },
     { id: 'customers', label: 'Customer Directory', icon: Users },
     { id: 'reports', label: 'Reports & Exports', icon: BarChart3 },
   ];
@@ -291,6 +295,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
           {activeTab === 'bulk-enquiries' && <BulkEnquiriesTab />}
           {activeTab === 'wholesale-orders' && <WholesaleOrdersTab />}
           {activeTab === 'inventory' && <ProductInventoryTab />}
+          {activeTab === 'dealers' && <DealersTab />}
           {activeTab === 'customers' && <CustomerDirectoryTab />}
           {activeTab === 'reports' && <ReportsTab />}
         </main>
