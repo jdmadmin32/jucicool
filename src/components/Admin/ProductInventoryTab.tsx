@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Product } from '../../types';
 import { fetchAdminProducts, updateAdminProduct, createAdminProduct, deleteAdminProduct } from '../../services/api';
+import { SinglePhotoUpload, MultiPhotoUpload } from './SoftCopyPhotoUploader';
 
 export const ProductInventoryTab: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -82,7 +83,7 @@ export const ProductInventoryTab: React.FC = () => {
   };
 
   const handleDeleteProduct = async (prodId: number, prodName: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete "${prodName}"?\nThis will remove the product and all associated pictures.`)) {
+    if (!window.confirm(`Are you sure you want to permanently delete "${prodName}"?\nThis will completely remove the product and all associated soft copy photos from the database.`)) {
       return;
     }
     setIsDeleting(prodId);
@@ -92,6 +93,7 @@ export const ProductInventoryTab: React.FC = () => {
       if (editingProduct && editingProduct.id === prodId) {
         setEditingProduct(null);
       }
+      alert(`"${prodName}" and its stored images have been permanently deleted from the database.`);
     } catch (err: any) {
       alert('Failed to delete product: ' + err.message);
     } finally {
@@ -454,76 +456,29 @@ export const ProductInventoryTab: React.FC = () => {
                 />
               </div>
 
-              {/* Primary Image */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#183D2B] mb-1">Primary Image URL</label>
-                  <input
-                    type="text"
-                    value={editingProduct.image_url}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, image_url: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-[#E6EBDD]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-[#183D2B] mb-1">Shot / Detail Image URL</label>
-                  <input
-                    type="text"
-                    value={editingProduct.shot_image_url || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, shot_image_url: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-[#E6EBDD]"
-                  />
-                </div>
+              {/* Soft Copy Photos Upload (Compressed to ~2KB for Database) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <SinglePhotoUpload
+                  label="Primary Product Photo"
+                  sublabel="Main soft copy (~2KB)"
+                  value={editingProduct.image_url}
+                  onChange={(dataUrl) => setEditingProduct({ ...editingProduct, image_url: dataUrl })}
+                  required
+                />
+                <SinglePhotoUpload
+                  label="Shot / Detail Image Photo"
+                  sublabel="Secondary soft copy (~2KB)"
+                  value={editingProduct.shot_image_url || ''}
+                  onChange={(dataUrl) => setEditingProduct({ ...editingProduct, shot_image_url: dataUrl })}
+                />
               </div>
 
-              {/* Multiple Extra Images for Edit */}
-              <div className="p-3 bg-[#F8FAF5] rounded-2xl border border-[#E6EBDD] space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-[#183D2B] flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-[#138443]" />
-                    <span>Multiple Product Pictures ({editingProduct.extraImagesList?.length || 0})</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const url = prompt('Enter additional product image URL:');
-                      if (url && url.trim()) {
-                        setEditingProduct({
-                          ...editingProduct,
-                          extraImagesList: [...(editingProduct.extraImagesList || []), url.trim()]
-                        });
-                      }
-                    }}
-                    className="text-[11px] font-bold text-[#138443] hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" /> Add Picture
-                  </button>
-                </div>
-
-                {editingProduct.extraImagesList && editingProduct.extraImagesList.length > 0 ? (
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                    {editingProduct.extraImagesList.map((img, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-[#E6EBDD]">
-                        <img src={img} alt="Preview" className="w-8 h-8 object-contain rounded bg-slate-50 p-0.5" />
-                        <span className="flex-1 truncate text-[11px] text-[#68756B]">{img}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = [...(editingProduct.extraImagesList || [])];
-                            updated.splice(idx, 1);
-                            setEditingProduct({ ...editingProduct, extraImagesList: updated });
-                          }}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-[#68756B]">No additional pictures added yet.</p>
-                )}
-              </div>
+              {/* Multiple Soft Copy Pictures */}
+              <MultiPhotoUpload
+                label="Multiple Product Pictures"
+                images={editingProduct.extraImagesList || []}
+                onChange={(imgs) => setEditingProduct({ ...editingProduct, extraImagesList: imgs })}
+              />
 
               <div className="pt-3 border-t border-[#E6EBDD] flex items-center justify-between">
                 <button
@@ -703,93 +658,29 @@ export const ProductInventoryTab: React.FC = () => {
                 />
               </div>
 
-              {/* Primary Image URL */}
-              <div>
-                <label className="block font-semibold text-[#183D2B] mb-1">Primary Picture URL</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="/images/products/mango-bottle.png"
+              {/* Soft Copy Photos Upload */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <SinglePhotoUpload
+                  label="Primary Product Photo"
+                  sublabel="Main soft copy (~2KB)"
                   value={newProd.imageUrl}
-                  onChange={(e) => setNewProd({ ...newProd, imageUrl: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-[#E6EBDD]"
+                  onChange={(dataUrl) => setNewProd({ ...newProd, imageUrl: dataUrl })}
+                  required
+                />
+                <SinglePhotoUpload
+                  label="Shot / Detail Image Photo"
+                  sublabel="Optional secondary photo (~2KB)"
+                  value={newProd.shotImageUrl || ''}
+                  onChange={(dataUrl) => setNewProd({ ...newProd, shotImageUrl: dataUrl })}
                 />
               </div>
 
-              {/* Multiple Pictures / Extra Images Section */}
-              <div className="p-3 bg-[#F8FAF5] rounded-2xl border border-[#E6EBDD] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="font-bold text-[#183D2B] flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-[#138443]" />
-                      <span>Multiple Pictures Choice ({newProd.extraImages.length})</span>
-                    </label>
-                    <p className="text-[10px] text-[#68756B]">Add gallery pictures for customers to browse</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const url = prompt('Enter picture URL to add:');
-                      if (url && url.trim()) {
-                        setNewProd({
-                          ...newProd,
-                          extraImages: [...newProd.extraImages, url.trim()]
-                        });
-                      }
-                    }}
-                    className="px-2.5 py-1 bg-white border border-[#138443] text-[#138443] hover:bg-[#138443] hover:text-white rounded-lg font-bold text-[11px] transition-colors flex items-center gap-1 shadow-sm"
-                  >
-                    <Plus className="w-3 h-3" /> Add Picture
-                  </button>
-                </div>
-
-                {/* Preset image suggestions for quick adding */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] text-[#68756B] self-center">Presets:</span>
-                  {[
-                    '/images/products/shot-mango-bottle.png',
-                    '/images/products/guava-pack.png',
-                    '/images/products/apple-drink.png',
-                    '/images/products/mango-pouch.png'
-                  ].map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        if (!newProd.extraImages.includes(preset)) {
-                          setNewProd({ ...newProd, extraImages: [...newProd.extraImages, preset] });
-                        }
-                      }}
-                      className="px-2 py-0.5 bg-white border border-[#E6EBDD] text-[10px] text-[#183D2B] rounded-md hover:border-[#138443]"
-                    >
-                      + {preset.split('/').pop()}
-                    </button>
-                  ))}
-                </div>
-
-                {/* List of currently added extra images */}
-                {newProd.extraImages.length > 0 && (
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
-                    {newProd.extraImages.map((img, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-[#E6EBDD]">
-                        <img src={img} alt="Preview" className="w-8 h-8 object-contain rounded bg-slate-50 p-0.5" />
-                        <span className="flex-1 truncate text-[11px] text-[#68756B]">{img}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = [...newProd.extraImages];
-                            updated.splice(idx, 1);
-                            setNewProd({ ...newProd, extraImages: updated });
-                          }}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Multiple Soft Copy Pictures */}
+              <MultiPhotoUpload
+                label="Multiple Pictures Choice"
+                images={newProd.extraImages}
+                onChange={(imgs) => setNewProd({ ...newProd, extraImages: imgs })}
+              />
 
               <div className="pt-3 border-t border-[#E6EBDD] flex justify-end gap-2">
                 <button
