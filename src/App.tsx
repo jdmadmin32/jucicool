@@ -15,12 +15,14 @@ import { CartDrawer } from './components/CartDrawer';
 import { RetailCheckoutModal } from './components/RetailCheckoutModal';
 import { BulkEnquiryModal } from './components/BulkEnquiryModal';
 import { OrderTrackingModal } from './components/OrderTrackingModal';
+import { VideoSection } from './components/VideoSection';
 import { WholesaleSection } from './components/WholesaleSection';
 import { AboutSection } from './components/AboutSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { AdminPortal } from './components/Admin/AdminPortal';
 import { DealerPortalPage } from './components/Dealer/DealerPortalPage';
+import { ChairmanProfilePage } from './components/ChairmanProfilePage';
 import { LoginModal } from './components/LoginModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import {
@@ -32,7 +34,7 @@ import {
 } from 'lucide-react';
 
 export const MainApp: React.FC = () => {
-  const [activeView, setActiveView] = useState<'storefront' | 'admin' | 'dealer'>('storefront');
+  const [activeView, setActiveView] = useState<'storefront' | 'admin' | 'dealer' | 'chairman'>('storefront');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -79,7 +81,15 @@ export const MainApp: React.FC = () => {
 
   useEffect(() => {
     loadCatalog();
-  }, [selectedCategory, searchTerm]);
+
+    const handleCatalogUpdate = () => {
+      loadCatalog();
+    };
+    window.addEventListener('juci-catalog-updated', handleCatalogUpdate);
+    return () => {
+      window.removeEventListener('juci-catalog-updated', handleCatalogUpdate);
+    };
+  }, [selectedCategory, searchTerm, activeView]);
 
   // Handlers
   const handleOpenBulkForProduct = (prod: Product) => {
@@ -118,6 +128,18 @@ export const MainApp: React.FC = () => {
     );
   }
 
+  if (activeView === 'chairman') {
+    return (
+      <ChairmanProfilePage
+        onBackToStore={() => {
+          setActiveView('storefront');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenBulkModal={handleOpenGeneralBulk}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFEF7] pb-20 md:pb-0">
       {/* Navbar */}
@@ -126,6 +148,10 @@ export const MainApp: React.FC = () => {
         onOpenTrackingModal={() => setIsTrackingModalOpen(true)}
         onOpenAdminPortal={() => setActiveView('admin')}
         onOpenDealerPortal={() => setActiveView('dealer')}
+        onOpenChairmanProfile={() => {
+          setActiveView('chairman');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onSelectCategory={(slug) => setSelectedCategory(slug)}
         onSearchChange={(query) => setSearchTerm(query)}
         searchTerm={searchTerm}
@@ -243,11 +269,20 @@ export const MainApp: React.FC = () => {
         )}
       </section>
 
+      {/* Juci Cool Official Video Showcase & YouTube Link */}
+      <VideoSection />
+
       {/* Dedicated Wholesale & B2B Section */}
       <WholesaleSection onOpenBulkModal={handleOpenGeneralBulk} />
 
       {/* About Section */}
-      <AboutSection />
+      <AboutSection
+        onOpenBulkModal={handleOpenGeneralBulk}
+        onOpenChairmanProfile={() => {
+          setActiveView('chairman');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       {/* Contact Section */}
       <ContactSection />
@@ -257,6 +292,10 @@ export const MainApp: React.FC = () => {
         onShopClick={scrollToCatalog}
         onBulkClick={handleOpenGeneralBulk}
         onTrackingClick={() => setIsTrackingModalOpen(true)}
+        onOpenChairmanProfile={() => {
+          setActiveView('chairman');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onCategoryClick={(catSlug) => {
           setSelectedCategory(catSlug);
           scrollToCatalog();

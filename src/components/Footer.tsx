@@ -6,6 +6,7 @@ interface FooterProps {
   onBulkClick: () => void;
   onTrackingClick: () => void;
   onCategoryClick: (slug: string) => void;
+  onOpenChairmanProfile?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -13,6 +14,7 @@ export const Footer: React.FC<FooterProps> = ({
   onBulkClick,
   onTrackingClick,
   onCategoryClick,
+  onOpenChairmanProfile,
 }) => {
   const [activePolicy, setActivePolicy] = useState<string | null>(null);
 
@@ -116,10 +118,35 @@ export const Footer: React.FC<FooterProps> = ({
                 </button>
               </li>
               <li>
-                <a href="#about-section" className="hover:text-white transition-colors">
-                  About Us
+                <a href="#juci-cool-videos" className="hover:text-white transition-colors">
+                  Factory & Product Videos
                 </a>
               </li>
+              <li>
+                <a
+                  href="https://www.youtube.com/@JUCICOOL-JDM"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-400 font-semibold hover:text-red-300 transition-colors inline-flex items-center gap-1"
+                >
+                  YouTube Channel (@JUCICOOL-JDM) &rarr;
+                </a>
+              </li>
+              <li>
+                <a href="#about-section" className="hover:text-white transition-colors">
+                  About JDM
+                </a>
+              </li>
+              {onOpenChairmanProfile && (
+                <li>
+                  <button
+                    onClick={onOpenChairmanProfile}
+                    className="text-[#FFC928] font-bold hover:underline text-left inline-flex items-center gap-1"
+                  >
+                    About Chairman (Mr. A. Chandra Sheker Reddy) &rarr;
+                  </button>
+                </li>
+              )}
               <li>
                 <a href="#contact-section" className="hover:text-white transition-colors">
                   Contact

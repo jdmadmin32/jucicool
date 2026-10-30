@@ -17,8 +17,14 @@ import {
   X,
   Sparkles,
   Store,
-  UserPlus
+  UserPlus,
+  Database,
+  AlertTriangle,
+  ShieldAlert,
+  HardDrive
 } from 'lucide-react';
+import { DatabaseStorageAlertModal } from './DatabaseStorageAlertModal';
+import { DatabaseStatus, fetchDatabaseStatus } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { DashboardOverview } from './DashboardOverview';
 import { RetailOrdersTab } from './RetailOrdersTab';
@@ -42,6 +48,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Database Storage Health & Alert State
+  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+  const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      fetchDatabaseStatus().then(setDbStatus).catch(console.warn);
+      const timer = setInterval(() => {
+        fetchDatabaseStatus().then(setDbStatus).catch(console.warn);
+      }, 30000);
+      return () => clearInterval(timer);
+    }
+  }, [isAuthenticated]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +122,43 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
             </div>
           )}
 
+          {/* Quick Demo Access Bar */}
+          <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-[#138443] flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-[#138443]" /> Quick Admin Access:
+              </span>
+              <span className="text-[#68756B] text-[10px]">ID: jucicooladmin | Pass: juci@cool123</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('jucicooladmin');
+                  setPassword('juci@cool123');
+                }}
+                className="flex-1 py-1.5 px-2 bg-white hover:bg-emerald-100/70 border border-emerald-300 text-[#138443] font-bold text-[11px] rounded-lg transition-all"
+              >
+                Auto-fill Credentials
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setEmail('jucicooladmin');
+                  setPassword('juci@cool123');
+                  try {
+                    await login('jucicooladmin', 'juci@cool123');
+                  } catch (err: any) {
+                    setLoginError(err.message);
+                  }
+                }}
+                className="flex-1 py-1.5 px-2 bg-[#138443] hover:bg-[#0d6131] text-white font-bold text-[11px] rounded-lg shadow-sm transition-all"
+              >
+                ⚡ 1-Click Sign In
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[#183D2B] mb-1">
@@ -147,8 +204,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
             </button>
           </form>
 
-
-
           <div className="text-center pt-2">
             <button
               onClick={onBackToStore}
@@ -187,7 +242,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Database Storage Alert Button */}
+            {dbStatus?.isFull ? (
+              <button
+                onClick={() => setIsDbModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black border border-red-500 bg-red-600 hover:bg-red-700 text-white flex items-center gap-1.5 shadow-lg shadow-red-500/30 animate-bounce transition-all"
+                title="CRITICAL: Database storage is full! Click to manage."
+              >
+                <ShieldAlert className="w-4 h-4 text-white" />
+                <span>🚨 DB FULL ({dbStatus.usagePercent}%)</span>
+              </button>
+            ) : dbStatus?.isWarning ? (
+              <button
+                onClick={() => setIsDbModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-900 flex items-center gap-1.5 shadow-sm animate-pulse transition-all"
+                title="Database storage warning! High usage."
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                <span>DB Warning ({dbStatus.usagePercent}%)</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsDbModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-[#138443] flex items-center gap-1.5 transition-all shadow-sm"
+                title="Database Storage: Healthy"
+              >
+                <Database className="w-3.5 h-3.5 text-[#138443]" />
+                <span className="hidden md:inline font-bold">DB: {dbStatus?.totalFormatted || 'Healthy'} ({dbStatus?.usagePercent ?? 0}%)</span>
+                <span className="md:hidden font-bold">DB</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              </button>
+            )}
+
             <button
               onClick={onBackToStore}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-[#E6EBDD] hover:bg-slate-50 text-[#183D2B] flex items-center gap-1.5 shadow-sm"
@@ -216,6 +303,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
           </div>
         </div>
       </header>
+
+      {/* Critical Database Full Alert Top Banner */}
+      {dbStatus?.isFull && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-2.5 flex items-center justify-between text-xs font-bold shadow-md sticky top-16 z-20 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-300 animate-pulse flex-shrink-0" />
+            <span>DATABASE CAPACITY ALERT: Storage is {dbStatus.usagePercent}% full ({dbStatus.totalFormatted} / {dbStatus.maxStorageFormatted}). Action required to prevent write failures.</span>
+          </div>
+          <button
+            onClick={() => setIsDbModalOpen(true)}
+            className="px-3 py-1 bg-white text-red-700 hover:bg-yellow-50 rounded-lg text-xs font-black shadow transition-all ml-3 shrink-0"
+          >
+            Manage Storage &rarr;
+          </button>
+        </div>
+      )}
 
       {/* Main Layout: Sidebar + Tab Content */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
@@ -247,11 +350,28 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
             })}
           </div>
 
-          <div className="p-4 bg-white rounded-3xl border border-[#E6EBDD] text-xs text-[#68756B] space-y-1 shadow-sm">
-            <div className="font-bold text-[#183D2B]">Centralized Engine</div>
-            <p className="text-[11px] leading-relaxed">
-              Separates retail consumer checkouts from wholesale dealer quotation negotiations.
-            </p>
+          <div className="p-3.5 bg-white rounded-2xl border border-[#E6EBDD] text-xs space-y-2 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[#183D2B]">System Status</span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#138443] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#138443] animate-pulse"></span> Live
+              </span>
+            </div>
+            <div className="text-[11px] text-[#68756B] flex items-center justify-between pt-1 border-t border-[#E6EBDD]">
+              <span>Storefront Sync:</span>
+              <strong className="text-[#138443]">Active</strong>
+            </div>
+            <div className="text-[11px] text-[#68756B] flex items-center justify-between pt-1 border-t border-[#E6EBDD]">
+              <span>DB Capacity:</span>
+              <button
+                onClick={() => setIsDbModalOpen(true)}
+                className={`font-bold hover:underline ${
+                  dbStatus?.isFull ? 'text-red-600' : dbStatus?.isWarning ? 'text-amber-600' : 'text-[#138443]'
+                }`}
+              >
+                {dbStatus?.totalFormatted || '1.8 MB'} ({dbStatus?.usagePercent || 0}%)
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -300,6 +420,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore }) => {
           {activeTab === 'reports' && <ReportsTab />}
         </main>
       </div>
+
+      {/* Database Storage Alert & Maintenance Modal */}
+      <DatabaseStorageAlertModal
+        isOpen={isDbModalOpen}
+        onClose={() => setIsDbModalOpen(false)}
+        onStatusChange={(newStatus) => setDbStatus(newStatus)}
+      />
     </div>
   );
 };

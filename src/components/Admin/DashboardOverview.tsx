@@ -56,8 +56,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
       {/* Header & Date Range Filter */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-[#E6EBDD] shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-[#183D2B] font-poppins">Business Intelligence Overview</h2>
-          <p className="text-xs text-[#68756B]">Deriving real-time retail and wholesale statistics from database</p>
+          <h2 className="text-xl font-bold text-[#183D2B] font-poppins">Dashboard Overview</h2>
+          <p className="text-xs text-[#68756B]">Real-time orders, enquiries, revenue & inventory tracking</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -185,11 +185,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
         <div className="lg:col-span-7 bg-white p-5 sm:p-6 rounded-3xl border border-[#E6EBDD] shadow-sm space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-sm font-bold text-[#183D2B] font-poppins">Retail Sales Activity Trends</h3>
+              <h3 className="text-sm font-bold text-[#183D2B] font-poppins">Sales Activity Trends</h3>
               <p className="text-xs text-[#68756B]">Daily orders and revenue generated</p>
             </div>
             <span className="text-xs font-bold text-[#138443] bg-[#138443]/10 px-2.5 py-1 rounded-full">
-              Live DB Aggregation
+              Live Overview
             </span>
           </div>
 
@@ -217,8 +217,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate
           </div>
 
           <div className="flex justify-between text-xs text-[#68756B] pt-1">
-            <span>Minimum threshold: ₹0</span>
-            <span>Automated daily reconciliation</span>
+            <span>Recent Days</span>
+            <span className="text-[#138443] font-semibold">Hover bar for revenue details</span>
           </div>
         </div>
 

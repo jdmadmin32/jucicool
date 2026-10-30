@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { db, initDatabase } from './db';
 
 dotenv.config();
@@ -20,6 +21,253 @@ app.use('/images', express.static(path.resolve(process.cwd(), 'public/images')))
 
 // Initialize DB schema
 initDatabase();
+
+// ==========================================
+// SERVER ROOT & HEALTH DASHBOARD (Fixes "Cannot GET /")
+// ==========================================
+app.get('/', (req: Request, res: Response) => {
+  const acceptsHtml = req.accepts('html');
+  if (acceptsHtml) {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Juci Cool API Server • JDM Fruit Products Pvt. Ltd.</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+        <style>
+          :root {
+            --primary: #138443;
+            --primary-dark: #183D2B;
+            --accent: #FFC928;
+            --lime: #8CC63E;
+            --bg: #F8FAF6;
+            --card: #FFFFFF;
+            --text: #183D2B;
+            --muted: #68756B;
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: linear-gradient(135deg, #183D2B 0%, #0d6131 50%, #138443 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+          }
+          .card {
+            background: var(--card);
+            max-width: 680px;
+            width: 100%;
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+          }
+          .header {
+            background: linear-gradient(135deg, #FFFEF7 0%, #F4F8F0 100%);
+            padding: 32px 32px 24px;
+            border-bottom: 1px solid #E6EBDD;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+          }
+          .logo {
+            height: 64px;
+            width: auto;
+            object-fit: contain;
+            background: white;
+            padding: 8px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            border: 1px solid #E6EBDD;
+          }
+          .header-text h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary-dark);
+          }
+          .header-text p {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 2px;
+          }
+          .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #E8F5E9;
+            color: #138443;
+            border: 1px solid #C8E6C9;
+          }
+          .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #138443;
+            box-shadow: 0 0 0 0 rgba(19, 132, 67, 0.7);
+            animation: pulse 1.6s infinite;
+          }
+          @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(19, 132, 67, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(19, 132, 67, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(19, 132, 67, 0); }
+          }
+          .body { padding: 32px; }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+          }
+          .grid-item {
+            background: #F9FAF6;
+            border: 1px solid #E6EBDD;
+            padding: 14px 16px;
+            border-radius: 16px;
+          }
+          .grid-item span {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+          }
+          .grid-item strong {
+            display: block;
+            font-size: 14px;
+            color: var(--primary-dark);
+            margin-top: 4px;
+          }
+          .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 24px;
+          }
+          .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+          }
+          .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 14px rgba(19, 132, 67, 0.35);
+          }
+          .btn-primary:hover { background: #0e6f37; transform: translateY(-1px); }
+          .btn-secondary {
+            background: white;
+            color: var(--primary-dark);
+            border: 1px solid #E6EBDD;
+          }
+          .btn-secondary:hover { background: #F4F8F0; border-color: var(--primary); }
+          .footer {
+            padding: 16px 32px;
+            background: #F9FAF6;
+            border-top: 1px solid #E6EBDD;
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <img src="/images/juci-cool-logo.png" alt="Juci Cool" class="logo" onerror="this.style.display='none'">
+            <div class="header-text">
+              <h1>Juci Cool API Server</h1>
+              <p>JDM Fruit Products Pvt. Ltd. • Medchal, Hyderabad</p>
+              <div class="status-badge">
+                <span class="pulse"></span> Server Status: Active & Operational
+              </div>
+            </div>
+          </div>
+          <div class="body">
+            <p style="font-size: 14px; color: var(--muted); line-height: 1.6;">
+              Welcome to the official backend service for <strong>Juci Cool</strong>. The API server powers product catalogs, real-time orders, dealer wholesale portals, quotations, and administrative inventory management.
+            </p>
+            <div class="grid">
+              <div class="grid-item">
+                <span>Port & Host</span>
+                <strong>http://localhost:5000</strong>
+              </div>
+              <div class="grid-item">
+                <span>Database Engine</span>
+                <strong>SQLite (Active WAL Mode)</strong>
+              </div>
+              <div class="grid-item">
+                <span>Manufacturer</span>
+                <strong>JDM Fruit Products Pvt. Ltd.</strong>
+              </div>
+              <div class="grid-item">
+                <span>Facility Location</span>
+                <strong>Ravakole, Medchal, Telangana</strong>
+              </div>
+            </div>
+            <div class="actions">
+              <a href="http://localhost:5173" class="btn btn-primary" target="_blank">🌐 Open Website Storefront (Port 5173)</a>
+              <a href="/api/products" class="btn btn-secondary">📦 View Products API</a>
+              <a href="/api/categories" class="btn btn-secondary">📂 Categories API</a>
+            </div>
+          </div>
+          <div class="footer">
+            <span>Built on Manufacturing Experience. Driven by Quality.</span>
+            <span>Est. 2012</span>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+    return;
+  }
+
+  res.json({
+    status: 'online',
+    service: 'Juci Cool API Server',
+    company: 'JDM Fruit Products Pvt. Ltd.',
+    established: 2012,
+    location: 'Sri Siddi Vinayaka Eco Industrial Park, Ravakole, Medchal, Telangana',
+    endpoints: {
+      products: '/api/products',
+      categories: '/api/categories',
+      retailOrders: '/api/retail-orders',
+      bulkEnquiries: '/api/bulk-enquiries',
+      adminStatus: '/api/admin/database/status'
+    },
+    storefrontUrl: 'http://localhost:5173'
+  });
+});
+
+app.get('/api', (req: Request, res: Response) => {
+  res.json({
+    status: 'online',
+    service: 'Juci Cool API',
+    version: '1.0.0',
+    company: 'JDM Fruit Products Pvt. Ltd.'
+  });
+});
 
 // ==========================================
 // AUTHENTICATION MIDDLEWARE
@@ -230,7 +478,7 @@ app.get('/api/products', (req: Request, res: Response) => {
   `;
   const params: any[] = [];
 
-  if (category) {
+  if (category && category !== 'all') {
     query += ` AND (c.slug = ? OR c.name = ?)`;
     params.push(category, category);
   }
@@ -465,13 +713,95 @@ app.get('/api/retail-orders/track/:query', (req: Request, res: Response) => {
   }
 
   const items = db.prepare('SELECT * FROM retail_order_items WHERE order_id = ?').all(order.id);
-  const history = db.prepare('SELECT * FROM status_history WHERE entity_type = "retail_order" AND entity_id = ? ORDER BY id ASC').all(order.id);
+  const history = db.prepare("SELECT * FROM status_history WHERE entity_type = 'retail_order' AND entity_id = ? ORDER BY id ASC").all(order.id);
 
   res.json({
     order,
     items,
     history
   });
+});
+
+// Track bulk enquiry by reference, phone number, or email
+app.get('/api/bulk-enquiries/track/:query', (req: Request, res: Response) => {
+  const query = String(req.params.query || '').trim();
+  const enquiry = db.prepare(`
+    SELECT * FROM bulk_enquiries
+    WHERE enquiry_number = ? OR phone_number = ? OR lower(email) = lower(?)
+    ORDER BY id DESC LIMIT 1
+  `).get(query, query, query) as any;
+
+  if (!enquiry) {
+    return res.status(404).json({ error: 'Bulk enquiry not found with the provided reference or phone number' });
+  }
+
+  const items = db.prepare('SELECT * FROM bulk_enquiry_items WHERE enquiry_id = ?').all(enquiry.id);
+  const quotations = db.prepare('SELECT * FROM quotations WHERE enquiry_id = ? ORDER BY id DESC').all(enquiry.id) as any[];
+  const history = db.prepare("SELECT * FROM status_history WHERE entity_type = 'bulk_enquiry' AND entity_id = ? ORDER BY id ASC").all(enquiry.id);
+
+  res.json({
+    enquiry: {
+      id: enquiry.id,
+      enquiryNumber: enquiry.enquiry_number,
+      customerName: enquiry.customer_name,
+      businessName: enquiry.business_name,
+      phoneNumber: enquiry.phone_number,
+      email: enquiry.email,
+      city: enquiry.city,
+      state: enquiry.state,
+      status: enquiry.status,
+      createdAt: enquiry.created_at,
+      ...enquiry
+    },
+    items,
+    quotations,
+    quotation: quotations[0] || null,
+    quotationAvailable: quotations.length > 0,
+    history
+  });
+});
+
+// Dealer bulk enquiries for dealer portal
+app.get('/api/dealer/bulk-enquiries', (req: Request, res: Response) => {
+  const email = (req.query.email || '').toString().toLowerCase().trim();
+  const phone = (req.query.phone || '').toString().trim();
+  const businessName = (req.query.businessName || '').toString().toLowerCase().trim();
+
+  let query = 'SELECT * FROM bulk_enquiries WHERE 1=1';
+  const params: any[] = [];
+
+  if (email || phone || businessName) {
+    const conditions: string[] = [];
+    if (email) {
+      conditions.push('lower(email) = ?');
+      params.push(email);
+    }
+    if (phone) {
+      conditions.push('phone_number = ?');
+      params.push(phone);
+    }
+    if (businessName) {
+      conditions.push('lower(business_name) = ?');
+      params.push(businessName);
+    }
+    query += ` AND (${conditions.join(' OR ')})`;
+  } else {
+    query += " AND customer_type = 'Dealer'";
+  }
+
+  query += ' ORDER BY id DESC';
+  const enquiries = db.prepare(query).all(...params) as any[];
+
+  const getItems = db.prepare('SELECT * FROM bulk_enquiry_items WHERE enquiry_id = ?');
+  const getQuotes = db.prepare('SELECT * FROM quotations WHERE enquiry_id = ? ORDER BY id DESC');
+
+  const enriched = enquiries.map(e => ({
+    ...e,
+    items: getItems.all(e.id),
+    quotations: getQuotes.all(e.id)
+  }));
+
+  res.json(enriched);
 });
 
 
@@ -803,7 +1133,7 @@ app.get('/api/admin/retail-orders/:id', authenticateToken, requireAdmin, (req: A
   }
 
   const items = db.prepare('SELECT * FROM retail_order_items WHERE order_id = ?').all(order.id);
-  const history = db.prepare('SELECT * FROM status_history WHERE entity_type = "retail_order" AND entity_id = ? ORDER BY id ASC').all(order.id);
+  const history = db.prepare("SELECT * FROM status_history WHERE entity_type = 'retail_order' AND entity_id = ? ORDER BY id ASC").all(order.id);
 
   res.json({ order, items, history });
 });
@@ -841,7 +1171,7 @@ app.patch('/api/admin/retail-orders/:id', authenticateToken, requireAdmin, (req:
     params.push(notes);
   }
 
-  updates.push('updated_at = datetime("now")');
+  updates.push('updated_at = CURRENT_TIMESTAMP');
 
   if (updates.length > 0) {
     params.push(orderId);
@@ -903,7 +1233,7 @@ app.get('/api/admin/bulk-enquiries/:id', authenticateToken, requireAdmin, (req: 
     items: getQuoteItems.all(q.id)
   }));
 
-  const history = db.prepare('SELECT * FROM status_history WHERE entity_type = "bulk_enquiry" AND entity_id = ? ORDER BY id ASC').all(enquiry.id);
+  const history = db.prepare("SELECT * FROM status_history WHERE entity_type = 'bulk_enquiry' AND entity_id = ? ORDER BY id ASC").all(enquiry.id);
 
   res.json({
     enquiry,
@@ -945,7 +1275,7 @@ app.patch('/api/admin/bulk-enquiries/:id', authenticateToken, requireAdmin, (req
     params.push(internalNotes);
   }
 
-  updates.push('updated_at = datetime("now")');
+  updates.push('updated_at = CURRENT_TIMESTAMP');
 
   if (updates.length > 0) {
     params.push(enquiryId);
@@ -1035,7 +1365,7 @@ app.post('/api/admin/bulk-enquiries/:id/quotations', authenticateToken, requireA
     }
 
     // Automatically update Enquiry status to 'Quotation Sent'
-    db.prepare('UPDATE bulk_enquiries SET status = "Quotation Sent", updated_at = datetime("now") WHERE id = ?')
+    db.prepare("UPDATE bulk_enquiries SET status = 'Quotation Sent', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
       .run(enquiryId);
 
     // Record status history
@@ -1072,17 +1402,17 @@ app.patch('/api/admin/quotations/:id', authenticateToken, requireAdmin, (req: Au
     return res.status(404).json({ error: 'Quotation not found' });
   }
 
-  db.prepare('UPDATE quotations SET status = ?, updated_at = datetime("now") WHERE id = ?').run(status, quoteId);
+  db.prepare('UPDATE quotations SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, quoteId);
 
   // If quotation accepted, update enquiry status to 'Accepted'
   if (status === 'Accepted') {
-    db.prepare('UPDATE bulk_enquiries SET status = "Accepted", updated_at = datetime("now") WHERE id = ?').run(quote.enquiry_id);
+    db.prepare("UPDATE bulk_enquiries SET status = 'Accepted', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(quote.enquiry_id);
     db.prepare(`
       INSERT INTO status_history (entity_type, entity_id, previous_status, new_status, changed_by, notes)
       VALUES ('bulk_enquiry', ?, 'Quotation Sent', 'Accepted', ?, ?)
     `).run(quote.enquiry_id, req.user!.fullName, notes || 'Quotation accepted by customer');
   } else if (status === 'Declined') {
-    db.prepare('UPDATE bulk_enquiries SET status = "Declined", updated_at = datetime("now") WHERE id = ?').run(quote.enquiry_id);
+    db.prepare("UPDATE bulk_enquiries SET status = 'Declined', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(quote.enquiry_id);
     db.prepare(`
       INSERT INTO status_history (entity_type, entity_id, previous_status, new_status, changed_by, notes)
       VALUES ('bulk_enquiry', ?, 'Quotation Sent', 'Declined', ?, ?)
@@ -1152,10 +1482,10 @@ app.post('/api/admin/quotations/:id/convert-to-order', authenticateToken, requir
     }
 
     // 3. Mark quotation as converted
-    db.prepare('UPDATE quotations SET status = "Converted", updated_at = datetime("now") WHERE id = ?').run(quoteId);
+    db.prepare("UPDATE quotations SET status = 'Converted', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(quoteId);
 
     // 4. Mark enquiry as 'Converted to Order'
-    db.prepare('UPDATE bulk_enquiries SET status = "Converted to Order", updated_at = datetime("now") WHERE id = ?').run(quote.enquiry_id);
+    db.prepare("UPDATE bulk_enquiries SET status = 'Converted to Order', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(quote.enquiry_id);
 
     // 5. History
     db.prepare(`
@@ -1252,7 +1582,7 @@ app.patch('/api/admin/wholesale-orders/:id', authenticateToken, requireAdmin, (r
     params.push(notes);
   }
 
-  updates.push('updated_at = datetime("now")');
+  updates.push('updated_at = CURRENT_TIMESTAMP');
 
   if (updates.length > 0) {
     params.push(orderId);
@@ -1452,7 +1782,8 @@ app.delete('/api/admin/products/:id/images/:imageId', authenticateToken, require
 // 6.5 Dealer Accounts Management (Admin Only)
 app.get('/api/admin/dealers', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   const dealers = db.prepare(`
-    SELECT id, email, full_name, phone, role, business_name, customer_type, city, state, created_at
+    SELECT id, email, full_name, phone, role, business_name, customer_type, city, state, created_at,
+           COALESCE(raw_password, CASE WHEN email = 'dealer@jucicool.com' THEN 'dealer123' ELSE 'Juci' || (id * 137 % 9000 + 1000) || '#' END) as password
     FROM users
     WHERE customer_type IN ('Dealer', 'Retailer', 'dealer_retailer') OR role = 'dealer'
     ORDER BY created_at DESC
@@ -1479,11 +1810,12 @@ app.post('/api/admin/dealers', authenticateToken, requireAdmin, (req: AuthReques
   const contactName = fullName ? fullName.trim() : storeName;
 
   const result = db.prepare(`
-    INSERT INTO users (email, password_hash, full_name, phone, role, business_name, customer_type, city, state)
-    VALUES (?, ?, ?, ?, 'customer', ?, 'Dealer', ?, ?)
+    INSERT INTO users (email, password_hash, raw_password, full_name, phone, role, business_name, customer_type, city, state)
+    VALUES (?, ?, ?, ?, ?, 'customer', ?, 'Dealer', ?, ?)
   `).run(
     cleanEmail,
     passwordHash,
+    password,
     contactName,
     phone ? phone.trim() : null,
     storeName,
@@ -1498,6 +1830,7 @@ app.post('/api/admin/dealers', authenticateToken, requireAdmin, (req: AuthReques
     dealer: {
       id: result.lastInsertRowid,
       email: cleanEmail,
+      password: password,
       fullName: contactName,
       businessName: storeName,
       phone: phone || null,
@@ -1620,6 +1953,165 @@ app.get('/api/admin/reports', authenticateToken, requireAdmin, (req: AuthRequest
     topWholesaleProducts,
     enquiryConversion
   });
+});
+
+// ==========================================
+// 9. DATABASE STORAGE & HEALTH MANAGEMENT
+// ==========================================
+
+app.get('/api/admin/database/status', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const dataDir = path.resolve(process.cwd(), 'data');
+    const dbFilePath = path.join(dataDir, 'jucicool.db');
+    const walFilePath = path.join(dataDir, 'jucicool.db-wal');
+
+    let dbSizeBytes = 0;
+    let walSizeBytes = 0;
+
+    if (fs.existsSync(dbFilePath)) {
+      dbSizeBytes = fs.statSync(dbFilePath).size;
+    }
+    if (fs.existsSync(walFilePath)) {
+      walSizeBytes = fs.statSync(walFilePath).size;
+    }
+
+    const totalBytes = dbSizeBytes + walSizeBytes;
+
+    // Pragma checks
+    const pageCount = (db.prepare('PRAGMA page_count').get() as any)?.page_count || 0;
+    const pageSize = (db.prepare('PRAGMA page_size').get() as any)?.page_size || 4096;
+    const freelistCount = (db.prepare('PRAGMA freelist_count').get() as any)?.freelist_count || 0;
+
+    // Row counts for key tables
+    const productCount = (db.prepare('SELECT COUNT(*) as c FROM products').get() as any)?.c || 0;
+    const imageCount = (db.prepare('SELECT COUNT(*) as c FROM product_images').get() as any)?.c || 0;
+    const retailCount = (db.prepare('SELECT COUNT(*) as c FROM retail_orders').get() as any)?.c || 0;
+    const enquiryCount = (db.prepare('SELECT COUNT(*) as c FROM bulk_enquiries').get() as any)?.c || 0;
+    const quoteCount = (db.prepare('SELECT COUNT(*) as c FROM quotations').get() as any)?.c || 0;
+    const wholesaleCount = (db.prepare('SELECT COUNT(*) as c FROM wholesale_orders').get() as any)?.c || 0;
+    const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as any)?.c || 0;
+    const auditCount = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as any)?.c || 0;
+
+    // Capacity metrics (50 MB standard safe limit threshold for local SQLite deployment)
+    const MAX_STORAGE_BYTES = 50 * 1024 * 1024; // 50MB
+    const WARNING_PERCENT = 75;
+    const FULL_PERCENT = 90;
+
+    let usagePercent = Math.min(100, Math.round((totalBytes / MAX_STORAGE_BYTES) * 1000) / 10);
+
+    // Support simulation for testing alert button
+    const simulate = req.query.simulate as string;
+    if (simulate === 'full') {
+      usagePercent = 94.2;
+    } else if (simulate === 'warning') {
+      usagePercent = 78.5;
+    }
+
+    const isFull = usagePercent >= FULL_PERCENT;
+    const isWarning = usagePercent >= WARNING_PERCENT && !isFull;
+    const status = isFull ? 'critical' : (isWarning ? 'warning' : 'healthy');
+
+    const formatBytes = (bytes: number) => {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    };
+
+    res.json({
+      status,
+      isFull,
+      isWarning,
+      usagePercent,
+      totalBytes,
+      totalFormatted: formatBytes(totalBytes),
+      dbSizeBytes,
+      dbSizeFormatted: formatBytes(dbSizeBytes),
+      walSizeBytes,
+      walSizeFormatted: formatBytes(walSizeBytes),
+      maxStorageBytes: MAX_STORAGE_BYTES,
+      maxStorageFormatted: formatBytes(MAX_STORAGE_BYTES),
+      pageCount,
+      pageSize,
+      freelistCount,
+      freeableBytes: freelistCount * pageSize,
+      freeableFormatted: formatBytes(freelistCount * pageSize),
+      tables: {
+        products: productCount,
+        productImages: imageCount,
+        retailOrders: retailCount,
+        bulkEnquiries: enquiryCount,
+        quotations: quoteCount,
+        wholesaleOrders: wholesaleCount,
+        users: userCount,
+        auditLogs: auditCount,
+      },
+      message: isFull
+        ? 'CRITICAL ALERT: Database storage is near full capacity! Free up space or optimize immediately.'
+        : isWarning
+        ? 'WARNING: Database storage usage is elevated (>75%). Consider running optimization.'
+        : 'Database storage is healthy and well within safe operational limits.'
+    });
+  } catch (err: any) {
+    console.error('Failed to get database status:', err);
+    res.status(500).json({ error: 'Failed to retrieve database status: ' + err.message });
+  }
+});
+
+// Run VACUUM & Optimize
+app.post('/api/admin/database/vacuum', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const dataDir = path.resolve(process.cwd(), 'data');
+    const dbFilePath = path.join(dataDir, 'jucicool.db');
+    const beforeSize = fs.existsSync(dbFilePath) ? fs.statSync(dbFilePath).size : 0;
+
+    // Execute VACUUM
+    db.exec('VACUUM');
+    db.exec('PRAGMA optimize');
+
+    const afterSize = fs.existsSync(dbFilePath) ? fs.statSync(dbFilePath).size : 0;
+    const freedBytes = Math.max(0, beforeSize - afterSize);
+
+    logAction('DATABASE_VACUUM', req.user!.fullName, `Optimized database via VACUUM. Freed ${freedBytes} bytes.`);
+
+    res.json({
+      message: 'Database optimized successfully',
+      freedBytes,
+      freedFormatted: freedBytes > 1024 ? `${(freedBytes / 1024).toFixed(1)} KB` : `${freedBytes} B`,
+      newSize: afterSize,
+      newSizeFormatted: `${(afterSize / (1024 * 1024)).toFixed(2)} MB`
+    });
+  } catch (err: any) {
+    console.error('Database vacuum failed:', err);
+    res.status(500).json({ error: 'Database optimization failed: ' + err.message });
+  }
+});
+
+// Clear Old Audit Logs
+app.post('/api/admin/database/clear-logs', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const countBefore = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as any)?.c || 0;
+    // Keep the most recent 100 audit logs, delete older ones
+    db.prepare(`
+      DELETE FROM audit_logs
+      WHERE id NOT IN (
+        SELECT id FROM audit_logs ORDER BY id DESC LIMIT 100
+      )
+    `).run();
+    const countAfter = (db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as any)?.c || 0;
+    const deletedCount = countBefore - countAfter;
+
+    db.exec('VACUUM');
+
+    logAction('CLEAR_LOGS', req.user!.fullName, `Purged ${deletedCount} older audit log records.`);
+
+    res.json({
+      message: `Successfully purged ${deletedCount} old audit log entries and optimized storage.`,
+      deletedCount
+    });
+  } catch (err: any) {
+    console.error('Failed to clear logs:', err);
+    res.status(500).json({ error: 'Failed to clear logs: ' + err.message });
+  }
 });
 
 // Start Express Server

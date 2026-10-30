@@ -23,6 +23,7 @@ interface NavbarProps {
   onOpenTrackingModal: () => void;
   onOpenAdminPortal: () => void;
   onOpenDealerPortal?: () => void;
+  onOpenChairmanProfile?: () => void;
   onSelectCategory: (category: string) => void;
   onSearchChange: (search: string) => void;
   searchTerm: string;
@@ -33,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenTrackingModal,
   onOpenAdminPortal,
   onOpenDealerPortal,
+  onOpenChairmanProfile,
   onSelectCategory,
   onSearchChange,
   searchTerm,
@@ -47,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     openLoginModal
   } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProductsDropdown, setShowProductsDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const handleNavClick = (catSlug?: string) => {
@@ -135,36 +138,75 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Home
             </button>
-            <button
-              onClick={() => handleNavClick()}
-              className="px-3.5 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all"
+
+            {/* Products Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setShowProductsDropdown(true)}
+              onMouseLeave={() => setShowProductsDropdown(false)}
             >
-              Shop All
-            </button>
+              <button
+                className="px-3.5 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1"
+                onClick={() => handleNavClick()}
+              >
+                Products
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showProductsDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showProductsDropdown && (
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-[#E6EBDD] py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {[
+                    { label: '🍹 Fruit Juices', slug: 'fruit-juices', color: '#FFC928' },
+                    { label: '🫧 Carbonated Drinks', slug: 'carbonated-drinks', color: '#60BFFF' },
+                    { label: '💧 Packaged Drinking Water', slug: 'packaged-water', color: '#60C6E0' },
+                    { label: '⚡ Glucose Drinks', slug: 'glucose-drinks', color: '#F7941D' },
+                    { label: '🍬 Candies', slug: 'candies', color: '#EE82C4' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.slug}
+                      onClick={() => { handleNavClick(cat.slug); setShowProductsDropdown(false); }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#183D2B] hover:bg-[#F4F8F0] hover:text-[#138443] transition-colors flex items-center gap-2.5"
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                      {cat.label}
+                    </button>
+                  ))}
+                  <div className="border-t border-[#E6EBDD] mt-1 pt-1">
+                    <button
+                      onClick={() => { handleNavClick(); setShowProductsDropdown(false); }}
+                      className="w-full text-left px-4 py-2 text-xs font-bold text-[#138443] hover:bg-[#F4F8F0] transition-colors"
+                    >
+                      View All Products →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
-              onClick={() => handleNavClick('mango-drinks')}
-              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1.5"
+              onClick={() => scrollToSection('juci-cool-videos')}
+              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-red-600 hover:shadow-xs transition-all flex items-center gap-1.5 text-[#68756B]"
             >
-              <span className="w-2 h-2 rounded-full bg-[#FFC928]"></span> Mango
-            </button>
-            <button
-              onClick={() => handleNavClick('fruit-drinks')}
-              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1.5"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#8CC63E]"></span> Juices
-            </button>
-            <button
-              onClick={() => handleNavClick('candy')}
-              className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all flex items-center gap-1.5"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#F7941D]"></span> Candies
+              <span className="w-2 h-2 rounded-full bg-red-500"></span> Videos
             </button>
             <button
               onClick={() => scrollToSection('about-section')}
               className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all text-[#68756B]"
             >
-              About
+              About JDM
             </button>
+            {onOpenChairmanProfile && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenChairmanProfile();
+                }}
+                className="px-3 py-1.5 rounded-full bg-white/80 border border-[#8CC63E]/40 text-[#138443] hover:bg-[#138443] hover:text-white hover:shadow-xs transition-all font-bold flex items-center gap-1"
+                title="Founder & Managing Director - Mr. A. Chandra Sheker Reddy"
+              >
+                <span>About Chairman</span>
+              </button>
+            )}
             <button
               onClick={() => scrollToSection('contact-section')}
               className="px-3 py-1.5 rounded-full hover:bg-white hover:text-[#138443] hover:shadow-xs transition-all text-[#68756B]"
@@ -354,29 +396,49 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               🏠 Home
             </button>
+
+            {/* Products Expandable Section (Mobile) */}
+            <div>
+              <button
+                onClick={() => setShowProductsDropdown(!showProductsDropdown)}
+                className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 font-semibold flex items-center justify-between"
+              >
+                <span>🛍️ Products</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showProductsDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showProductsDropdown && (
+                <div className="mt-1 ml-3 pl-3 border-l-2 border-[#8CC63E]/40 flex flex-col gap-0.5">
+                  {[
+                    { label: '🍹 Fruit Juices', slug: 'fruit-juices', color: '#FFC928' },
+                    { label: '🫧 Carbonated Drinks', slug: 'carbonated-drinks', color: '#60BFFF' },
+                    { label: '💧 Packaged Drinking Water', slug: 'packaged-water', color: '#60C6E0' },
+                    { label: '⚡ Glucose Drinks', slug: 'glucose-drinks', color: '#F7941D' },
+                    { label: '🍬 Candies', slug: 'candies', color: '#EE82C4' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.slug}
+                      onClick={() => handleNavClick(cat.slug)}
+                      className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                      {cat.label}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handleNavClick()}
+                    className="text-left px-3 py-2 rounded-xl text-[#138443] font-bold hover:bg-[#E6EBDD]/60"
+                  >
+                    View All Products →
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
-              onClick={() => handleNavClick()}
-              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 font-semibold"
+              onClick={() => scrollToSection('juci-cool-videos')}
+              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2 text-red-600 font-semibold"
             >
-              🛍️ All Products Catalog
-            </button>
-            <button
-              onClick={() => handleNavClick('mango-drinks')}
-              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#FFC928]"></span> Mango Drinks & Juices
-            </button>
-            <button
-              onClick={() => handleNavClick('fruit-drinks')}
-              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#8CC63E]"></span> Fruit Drinks & Pulps
-            </button>
-            <button
-              onClick={() => handleNavClick('candy')}
-              className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60 flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#F7941D]"></span> Candies & Fruit Jellies
+              <span className="w-2 h-2 rounded-full bg-red-500"></span> 🎬 Watch Factory Videos
             </button>
             <button
               onClick={() => scrollToSection('about-section')}
@@ -384,6 +446,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               ℹ️ About JDM Fruit Products
             </button>
+            {onOpenChairmanProfile && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenChairmanProfile();
+                }}
+                className="text-left px-3 py-2 rounded-xl bg-emerald-50 text-[#138443] font-bold border border-emerald-200/80 flex items-center justify-between"
+              >
+                <span>👔 About Chairman (Mr. A. Chandra Sheker Reddy)</span>
+                <span className="text-[10px] bg-[#138443] text-white px-1.5 py-0.5 rounded-full">MD</span>
+              </button>
+            )}
             <button
               onClick={() => scrollToSection('contact-section')}
               className="text-left px-3 py-2 rounded-xl hover:bg-[#E6EBDD]/60"

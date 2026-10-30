@@ -3,18 +3,18 @@ import {
   Search,
   Filter,
   Download,
-  Building2,
   PhoneCall,
   Mail,
   Calculator,
   Printer,
   CheckCircle2,
-  ArrowRight,
   Loader2,
   RefreshCw,
   X,
+  XCircle,
   FileCheck,
-  MessageCircle
+  MessageCircle,
+  Receipt
 } from 'lucide-react';
 import { BulkEnquiry, Quotation } from '../../types';
 import {
@@ -26,6 +26,7 @@ import {
 } from '../../services/api';
 import { QuotationBuilderModal } from './QuotationBuilderModal';
 import { PrintableQuotationModal } from './PrintableQuotationModal';
+import { InvoiceSlipModal, generateInvoiceSlip } from './InvoiceSlipModal';
 
 export const BulkEnquiriesTab: React.FC = () => {
   const [enquiries, setEnquiries] = useState<BulkEnquiry[]>([]);
@@ -37,6 +38,7 @@ export const BulkEnquiriesTab: React.FC = () => {
   const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);
   const [isQuotationBuilderOpen, setIsQuotationBuilderOpen] = useState(false);
   const [printableQuotation, setPrintableQuotation] = useState<Quotation | null>(null);
+  const [invoiceData, setInvoiceData] = useState<any | null>(null);
 
   // Status updates draft
   const [statusDraft, setStatusDraft] = useState('');
@@ -89,6 +91,53 @@ export const BulkEnquiriesTab: React.FC = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleQuickStatus = async (id: number, status: string, autoInvoice = false) => {
+    setIsUpdating(true);
+    try {
+      await updateBulkEnquiryStatus(id, { status });
+      await loadEnquiries();
+
+      let refreshed: any = null;
+      try {
+        refreshed = await fetchAdminBulkEnquiryById(id);
+      } catch (err) {
+        console.warn('Could not refresh full enquiry details:', err);
+      }
+
+      if (selectedEnquiry && selectedEnquiry.enquiry?.id === id) {
+        if (refreshed) {
+          setSelectedEnquiry(refreshed);
+        } else {
+          setSelectedEnquiry({
+            ...selectedEnquiry,
+            enquiry: { ...selectedEnquiry.enquiry, status }
+          });
+        }
+        setStatusDraft(status);
+      }
+
+      // Auto-generate invoice when confirming/accepting order
+      if (autoInvoice || status === 'Confirmed') {
+        const enq = refreshed?.enquiry || (selectedEnquiry?.enquiry?.id === id ? selectedEnquiry.enquiry : null) || enquiries.find(e => e.id === id);
+        const quotes = refreshed?.quotations || (selectedEnquiry?.enquiry?.id === id ? selectedEnquiry.quotations : []) || [];
+        const items = refreshed?.items || (selectedEnquiry?.enquiry?.id === id ? selectedEnquiry.items : []) || (enq as any)?.items || [];
+        if (enq) {
+          const inv = generateInvoiceSlip(enq, quotes, items);
+          setInvoiceData(inv);
+        }
+      }
+    } catch (err: any) {
+      alert('Failed to update status: ' + (err.message || 'Error'));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleAcceptAndInvoice = async () => {
+    if (!selectedEnquiry) return;
+    await handleQuickStatus(selectedEnquiry.enquiry.id, 'Confirmed', true);
   };
 
   // Convert Quotation to Wholesale Order
@@ -155,6 +204,8 @@ export const BulkEnquiriesTab: React.FC = () => {
               className="px-3 py-2 rounded-xl border border-[#E6EBDD] bg-white text-[#183D2B] font-semibold focus:outline-none focus:border-[#138443]"
             >
               <option value="All">All Pipeline Statuses</option>
+              <option value="Pending">Pending Enquiries</option>
+              <option value="Confirmed">Confirmed Orders</option>
               <option value="New">New Enquiries</option>
               <option value="Contacted">Contacted</option>
               <option value="Quotation Prepared">Quotation Prepared</option>
@@ -250,11 +301,17 @@ export const BulkEnquiriesTab: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          e.status === 'Converted to Order'
+                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          e.status === 'Confirmed'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : e.status === 'Declined'
+                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                            : e.status === 'Converted to Order'
                             ? 'bg-[#138443] text-white'
                             : e.status === 'Accepted'
                             ? 'bg-emerald-100 text-emerald-800'
+                            : e.status === 'Pending'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
                             : e.status === 'New'
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-purple-100 text-purple-800'
@@ -274,12 +331,43 @@ export const BulkEnquiriesTab: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenDetails(e.id)}
-                        className="px-3 py-1.5 rounded-xl border border-[#E6EBDD] text-[#138443] hover:bg-[#F4F8F0] font-bold shadow-sm"
-                      >
-                        Manage
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenDetails(e.id)}
+                          className="px-3 py-1.5 rounded-xl border border-[#E6EBDD] text-[#138443] hover:bg-[#F4F8F0] font-bold shadow-sm"
+                        >
+                          Manage
+                        </button>
+                        {e.status !== 'Confirmed' ? (
+                          <button
+                            onClick={() => handleQuickStatus(e.id, 'Confirmed', true)}
+                            className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 transition-colors"
+                            title="Confirm Order & Generate Invoice Slip"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              const inv = generateInvoiceSlip(e, (e as any).latestQuotation ? [(e as any).latestQuotation] : [], e.items || []);
+                              setInvoiceData(inv);
+                            }}
+                            className="p-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white border border-amber-200 transition-colors"
+                            title="View / Print Proforma Invoice Slip"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {e.status !== 'Declined' && (
+                          <button
+                            onClick={() => handleQuickStatus(e.id, 'Declined')}
+                            className="p-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200 transition-colors"
+                            title="Decline Order"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -310,6 +398,73 @@ export const BulkEnquiriesTab: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+              {/* Order Quick Action & Decision Banner */}
+              <div className="p-4 bg-gradient-to-r from-[#F4F8F0] to-[#FFFDF5] rounded-2xl border border-[#E6EBDD] flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-wider text-[#68756B]">
+                    Admin Order Decision
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-semibold text-[#183D2B]">Status:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${
+                      selectedEnquiry.enquiry.status === 'Confirmed'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : selectedEnquiry.enquiry.status === 'Declined'
+                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    }`}>
+                      {selectedEnquiry.enquiry.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={handleAcceptAndInvoice}
+                    disabled={isUpdating}
+                    className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all ${
+                      selectedEnquiry.enquiry.status === 'Confirmed'
+                        ? 'bg-emerald-700 text-white ring-2 ring-emerald-400'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>{selectedEnquiry.enquiry.status === 'Confirmed' ? '✓ Confirmed' : 'Confirm Order & Generate Invoice'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const inv = generateInvoiceSlip(
+                        selectedEnquiry.enquiry,
+                        selectedEnquiry.quotations,
+                        selectedEnquiry.items
+                      );
+                      setInvoiceData(inv);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#FFC928] hover:bg-yellow-400 text-[#183D2B] shadow-sm"
+                    title="Generate or view JDM Proforma Invoice Slip"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    <span>View Proforma Invoice Slip</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleQuickStatus(selectedEnquiry.enquiry.id, 'Declined')}
+                    disabled={isUpdating || selectedEnquiry.enquiry.status === 'Confirmed'}
+                    className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all ${
+                      selectedEnquiry.enquiry.status === 'Declined'
+                        ? 'bg-rose-700 text-white ring-2 ring-rose-400'
+                        : selectedEnquiry.enquiry.status === 'Confirmed'
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-rose-600 hover:bg-rose-700 text-white'
+                    }`}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Decline Order</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Customer Contact Card with Direct Call / WhatsApp */}
               <div className="p-4 bg-[#F9FAF6] rounded-2xl border border-[#E6EBDD] space-y-3 text-xs">
                 <div className="flex flex-wrap justify-between items-start gap-2">
@@ -478,6 +633,8 @@ export const BulkEnquiriesTab: React.FC = () => {
                       onChange={(e) => setStatusDraft(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-[#E6EBDD] bg-white font-bold"
                     >
+                      <option value="Pending">Pending</option>
+                      <option value="Confirmed">Confirmed</option>
                       <option value="New">New</option>
                       <option value="Contacted">Contacted</option>
                       <option value="Quotation Prepared">Quotation Prepared</option>
@@ -552,6 +709,14 @@ export const BulkEnquiriesTab: React.FC = () => {
         <PrintableQuotationModal
           quotation={printableQuotation}
           onClose={() => setPrintableQuotation(null)}
+        />
+      )}
+
+      {/* JDM Proforma Invoice Slip (generated on Confirm Order) */}
+      {invoiceData && (
+        <InvoiceSlipModal
+          invoiceData={invoiceData}
+          onClose={() => setInvoiceData(null)}
         />
       )}
     </div>

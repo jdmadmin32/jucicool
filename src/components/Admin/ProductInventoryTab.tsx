@@ -397,8 +397,7 @@ export const ProductInventoryTab: React.FC = () => {
                   <label className="block font-semibold text-[#183D2B] mb-1">Retail Price (₹)</label>
                   <input
                     type="number"
-                    step="0.5"
-                    min="1"
+                    step="0.01"
                     required
                     value={editingProduct.retail_price}
                     onChange={(e) => setEditingProduct({ ...editingProduct, retail_price: Number(e.target.value) })}
@@ -411,8 +410,7 @@ export const ProductInventoryTab: React.FC = () => {
                   <label className="block font-semibold text-[#183D2B] mb-1">Dealer Bulk Price (₹)</label>
                   <input
                     type="number"
-                    step="0.5"
-                    min="0.1"
+                    step="0.01"
                     required
                     value={editingProduct.wholesale_price || 0}
                     onChange={(e) => setEditingProduct({ ...editingProduct, wholesale_price: Number(e.target.value) })}
@@ -559,11 +557,11 @@ export const ProductInventoryTab: React.FC = () => {
                     onChange={(e) => setNewProd({ ...newProd, categoryId: Number(e.target.value) })}
                     className="w-full px-3 py-2 rounded-xl border border-[#E6EBDD] bg-white"
                   >
-                    <option value={1}>Fruit Drinks</option>
-                    <option value={2}>Mango Drinks</option>
-                    <option value={3}>Flavored Candy</option>
-                    <option value={4}>Fruit Jelly</option>
-                    <option value={5}>Natural Mineral Water</option>
+                    <option value={1}>🍹 Fruit Juices</option>
+                    <option value={2}>🫧 Carbonated Drinks</option>
+                    <option value={3}>💧 Packaged Drinking Water</option>
+                    <option value={4}>⚡ Glucose Drinks</option>
+                    <option value={5}>🍬 Candies</option>
                   </select>
                 </div>
               </div>
@@ -598,8 +596,7 @@ export const ProductInventoryTab: React.FC = () => {
                   <label className="block font-semibold text-[#183D2B] mb-1">Retail Price (₹)</label>
                   <input
                     type="number"
-                    step="0.5"
-                    min="1"
+                    step="0.01"
                     required
                     value={newProd.retailPrice}
                     onChange={(e) => setNewProd({ ...newProd, retailPrice: Number(e.target.value) })}
@@ -612,8 +609,7 @@ export const ProductInventoryTab: React.FC = () => {
                   <label className="block font-semibold text-[#183D2B] mb-1">Dealer Price (₹)</label>
                   <input
                     type="number"
-                    step="0.5"
-                    min="0.1"
+                    step="0.01"
                     required
                     value={newProd.wholesalePrice}
                     onChange={(e) => setNewProd({ ...newProd, wholesalePrice: Number(e.target.value) })}

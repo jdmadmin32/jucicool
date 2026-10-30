@@ -90,6 +90,7 @@ export interface BulkEnquiry {
   updated_at: string;
   items?: BulkEnquiryItem[];
   latestQuotation?: QuotationSummary;
+  quotations?: Quotation[];
 }
 
 export interface BulkEnquiryItem {
@@ -179,6 +180,7 @@ export interface WholesaleOrderItem {
 }
 
 export interface CustomerRecord {
+  id?: number | string;
   phone: string;
   name: string;
   email?: string;
@@ -192,6 +194,7 @@ export interface CustomerRecord {
   wholesale_orders: number;
   wholesale_spend: number;
   first_contact: string;
+  last_contact?: string;
 }
 
 export interface StatusHistory {
@@ -216,6 +219,7 @@ export interface AdminDashboardData {
     acceptedQuotations: number;
     wholesaleOrdersCount: number;
     wholesaleRevenue: number;
+    wholesaleAdvanceCollected?: number;
     totalProducts: number;
     lowStockProducts: number;
   };
@@ -233,6 +237,8 @@ export interface User {
   phone?: string;
   businessName?: string;
   customerType?: 'Retailer' | 'Dealer' | 'Individual' | string;
+  city?: string;
+  state?: string;
 }
 
 export interface RegisterData {
@@ -249,13 +255,18 @@ export interface RegisterData {
 export interface DealerRecord {
   id: number;
   email: string;
-  full_name: string;
+  password?: string;
+  full_name?: string;
+  fullName?: string;
   phone?: string;
-  role: string;
+  role?: string;
   business_name?: string;
-  customer_type: string;
+  businessName?: string;
+  customer_type?: string;
+  customerType?: string;
   city?: string;
   state?: string;
-  created_at: string;
+  created_at?: string;
+  createdAt?: string;
 }
 

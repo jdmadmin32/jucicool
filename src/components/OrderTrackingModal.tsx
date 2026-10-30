@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Search, Truck, Building2, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Search, Truck, Building2, CheckCircle2, Clock, AlertCircle, Loader2, Receipt } from 'lucide-react';
 import { trackRetailOrder, trackBulkEnquiry } from '../services/api';
+import { InvoiceSlipModal, generateInvoiceSlip } from './Admin/InvoiceSlipModal';
 
 interface OrderTrackingModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any | null>(null);
+  const [invoiceData, setInvoiceData] = useState<any | null>(null);
 
   if (!isOpen) return null;
 
@@ -247,6 +249,36 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
                   </div>
                 </div>
 
+                {/* Proforma Invoice Slip Button when Confirmed / Accepted */}
+                {(result.enquiry.status === 'Confirmed' || result.enquiry.status === 'Accepted' || result.enquiry.status === 'Converted to Order') && (
+                  <div className="p-3 bg-gradient-to-r from-amber-50 to-emerald-50 rounded-2xl border border-amber-200/80 flex flex-wrap items-center justify-between gap-2.5">
+                    <div>
+                      <div className="font-extrabold text-[#183D2B] text-xs flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Official Proforma Invoice Available</span>
+                      </div>
+                      <div className="text-[11px] text-[#68756B] mt-0.5">
+                        Your wholesale order has been confirmed by JDM Fruit Products.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const inv = generateInvoiceSlip(
+                          result.enquiry,
+                          result.quotations || (result.quotation ? [result.quotation] : []),
+                          result.items || []
+                        );
+                        setInvoiceData(inv);
+                      }}
+                      className="px-3.5 py-2 rounded-xl text-xs font-black bg-[#FFC928] hover:bg-yellow-400 text-[#183D2B] flex items-center gap-1.5 shadow-sm active:scale-98"
+                    >
+                      <Receipt className="w-4 h-4 text-[#183D2B]" />
+                      <span>View / Print Proforma Invoice</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Quotation Info if available */}
                 {result.quotationAvailable && result.quotation && (
                   <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs space-y-1">
@@ -281,6 +313,13 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
           )}
         </div>
       </div>
+
+      {invoiceData && (
+        <InvoiceSlipModal
+          invoiceData={invoiceData}
+          onClose={() => setInvoiceData(null)}
+        />
+      )}
     </div>
   );
 };

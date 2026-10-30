@@ -257,5 +257,46 @@ export function initDatabase() {
     console.error('Migration notice for wholesale_price:', migErr);
   }
 
+  // Migration: Ensure raw_password column exists on users for dealer credentials management
+  try {
+    const userTableInfo = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+    const hasRawPassword = userTableInfo.some(col => col.name === 'raw_password');
+    if (!hasRawPassword) {
+      db.exec('ALTER TABLE users ADD COLUMN raw_password TEXT');
+      console.log('Added raw_password column to users table.');
+    }
+  } catch (migErr) {
+    console.error('Migration notice for raw_password:', migErr);
+  }
+
+  // Migration: Update product_categories to the 5 official JDM categories
+  try {
+    const newCategories = [
+      { id: 1, name: 'Fruit Juices',            slug: 'fruit-juices',         description: 'Refreshing fruit-based juices made from real pulp — mango, guava, lychee and more.', display_order: 1 },
+      { id: 2, name: 'Carbonated Drinks',        slug: 'carbonated-drinks',    description: 'Fizzy, refreshing carbonated beverages in exciting flavors for every mood.',          display_order: 2 },
+      { id: 3, name: 'Packaged Drinking Water',  slug: 'packaged-water',       description: 'Pure, clean and safe packaged drinking water — ideal for homes and businesses.',      display_order: 3 },
+      { id: 4, name: 'Glucose Drinks',           slug: 'glucose-drinks',       description: 'Instant energy-replenishing glucose drinks to keep you active and refreshed.',         display_order: 4 },
+      { id: 5, name: 'Candies',                  slug: 'candies',              description: 'Fun, flavourful candies in mango, guava and assorted fruit flavors loved by all ages.',display_order: 5 },
+    ];
+    const upsertCat = db.prepare(`
+      INSERT INTO product_categories (id, name, slug, description, display_order)
+      VALUES (@id, @name, @slug, @description, @display_order)
+      ON CONFLICT(id) DO UPDATE SET
+        name          = excluded.name,
+        slug          = excluded.slug,
+        description   = excluded.description,
+        display_order = excluded.display_order
+    `);
+    const runMany = db.transaction(() => {
+      for (const cat of newCategories) upsertCat.run(cat);
+    });
+    runMany();
+    // Remove any old categories beyond id 5
+    db.prepare('DELETE FROM product_categories WHERE id > 5').run();
+    console.log('Product categories synced to 5 official JDM categories.');
+  } catch (catMigErr) {
+    console.error('Category migration notice:', catMigErr);
+  }
+
   console.log('Database schema verified.');
 }

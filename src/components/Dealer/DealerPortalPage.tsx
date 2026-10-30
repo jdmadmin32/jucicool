@@ -20,12 +20,20 @@ import {
   Minus,
   ExternalLink,
   ShieldCheck,
-  Boxes
+  Boxes,
+  ClipboardList,
+  Clock,
+  XCircle,
+  RefreshCw,
+  Receipt,
+  Printer
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { fetchProducts, fetchCategories } from '../../services/api';
-import { Product, ProductCategory } from '../../types';
+import { fetchProducts, fetchCategories, submitBulkEnquiry, fetchDealerBulkEnquiries } from '../../services/api';
+import { getLocalBulkEnquiries } from '../../services/adminStore';
+import { Product, ProductCategory, BulkEnquiry } from '../../types';
+import { InvoiceSlipModal, generateInvoiceSlip } from '../Admin/InvoiceSlipModal';
 
 interface DealerPortalPageProps {
   onBackToStore: () => void;
@@ -41,6 +49,11 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
   const { customerUser, customerLogout } = useAuth();
   const { addToCart, setIsCartOpen } = useCart();
 
+  const [activeTab, setActiveTab] = useState<'catalog' | 'my-orders'>('catalog');
+  const [myOrders, setMyOrders] = useState<BulkEnquiry[]>([]);
+  const [invoiceData, setInvoiceData] = useState<any | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -51,6 +64,35 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
   const [cartonQuantities, setCartonQuantities] = useState<Record<number, number>>({});
   const [orderItems, setOrderItems] = useState<BulkOrderItem[]>([]);
   const [orderSentSuccess, setOrderSentSuccess] = useState(false);
+
+  const loadMyOrders = async () => {
+    try {
+      const email = (customerUser?.email || '').toLowerCase().trim();
+      const phone = (customerUser?.phone || '').trim();
+      const bName = (customerUser?.businessName || '').trim();
+
+      const serverEnquiries = await fetchDealerBulkEnquiries(email, phone, bName);
+      if (serverEnquiries && serverEnquiries.length > 0) {
+        setMyOrders(serverEnquiries);
+        return;
+      }
+
+      const all = getLocalBulkEnquiries();
+      const filtered = all.filter(e => {
+        if (email && e.email && e.email.toLowerCase() === email) return true;
+        if (bName && e.business_name && e.business_name.toLowerCase() === bName.toLowerCase()) return true;
+        if (e.customer_type === 'Dealer' && (!e.email || e.email === 'dealer@jucicool.com')) return true;
+        return false;
+      });
+      setMyOrders(filtered);
+    } catch (err) {
+      console.error('Failed to load dealer orders:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadMyOrders();
+  }, [customerUser]);
 
   useEffect(() => {
     const loadWholesaleCatalog = async () => {
@@ -152,18 +194,48 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
 
   const totalDealerSavings = totalOrderRetailValue - totalOrderWholesaleValue;
 
-  const handleSendWhatsAppWholesaleOrder = () => {
+  const handleSendWhatsAppWholesaleOrder = async () => {
     if (orderItems.length === 0) return;
 
+    setIsSubmittingOrder(true);
     const dealerStore = customerUser?.businessName || customerUser?.fullName || 'Authorized Dealer';
-    const dealerContact = customerUser?.phone || customerUser?.email || 'Registered Contact';
+    const dealerContact = customerUser?.phone || '+91 94401 56789';
+    const dealerEmail = customerUser?.email || 'dealer@jucicool.com';
 
+    // 1. Submit Wholesale Order to Bulk Enquiries store so Admin can view and confirm/decline
+    try {
+      await submitBulkEnquiry({
+        customerName: customerUser?.fullName || 'Authorized Dealer',
+        businessName: dealerStore,
+        phoneNumber: dealerContact,
+        email: dealerEmail,
+        customerType: 'Dealer',
+        city: customerUser?.city || 'Hyderabad',
+        state: customerUser?.state || 'Telangana',
+        preferredContactMethod: 'WhatsApp',
+        additionalNotes: `Wholesale Dealer Order: ₹${totalOrderWholesaleValue.toLocaleString('en-IN')}`,
+        items: orderItems.map((item) => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          packSize: item.product.pack_size,
+          quantity: item.cartons,
+          unitLabel: 'Cartons',
+        })),
+      });
+      loadMyOrders();
+    } catch (err) {
+      console.warn('Error registering dealer order enquiry:', err);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+
+    // 2. Format and open WhatsApp message
     const messageLines = [
       '📦 *OFFICIAL WHOLESALE DEALER ORDER — JUCI COOL* 📦',
       '━━━━━━━━━━━━━━━━━━━━━',
       `🏬 *Dealer Store:* ${dealerStore}`,
       `👤 *Contact:* ${dealerContact}`,
-      `📍 *Account:* ${customerUser?.email || ''}`,
+      `📍 *Account:* ${dealerEmail}`,
       '',
       '🛒 *WHOLESALE BULK ITEMS ORDERED:*',
       ...orderItems.map((item, idx) => {
@@ -183,6 +255,8 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
     const whatsappUrl = `https://api.whatsapp.com/send?phone=919393122122&text=${encodeURIComponent(messageLines)}`;
     window.open(whatsappUrl, '_blank');
     setOrderSentSuccess(true);
+    setOrderItems([]);
+    setActiveTab('my-orders');
   };
 
   return (
@@ -251,8 +325,216 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
 
       {/* Main Dealer Body */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full space-y-6">
-        {/* Dealer Privilege Overview Banner */}
-        <div className="bg-gradient-to-r from-[#138443] via-[#0d6131] to-[#183D2B] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 sm:p-2.5 rounded-2xl border border-[#E6EBDD] shadow-sm">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('catalog')}
+              className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-black transition-all ${
+                activeTab === 'catalog'
+                  ? 'bg-[#183D2B] text-white shadow-md'
+                  : 'bg-[#F4F8F0] text-[#68756B] hover:text-[#183D2B] hover:bg-[#E6EBDD]'
+              }`}
+            >
+              <Boxes className="w-4 h-4" />
+              <span>Wholesale Catalog</span>
+            </button>
+            <button
+              onClick={() => {
+                loadMyOrders();
+                setActiveTab('my-orders');
+              }}
+              className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-black transition-all ${
+                activeTab === 'my-orders'
+                  ? 'bg-[#183D2B] text-white shadow-md'
+                  : 'bg-[#F4F8F0] text-[#68756B] hover:text-[#183D2B] hover:bg-[#E6EBDD]'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>My Orders</span>
+              {myOrders.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FFC928] text-[#183D2B]">
+                  {myOrders.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="text-[11px] text-[#68756B] pr-2 hidden sm:block">
+            Authorized Account: <strong className="text-[#183D2B]">{customerUser?.businessName || customerUser?.fullName || customerUser?.email}</strong>
+          </div>
+        </div>
+
+        {activeTab === 'my-orders' ? (
+          /* MY ORDERS VIEW */
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-[#E6EBDD] shadow-sm">
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-[#183D2B] font-poppins">
+                  My Wholesale Orders & Enquiries
+                </h2>
+                <p className="text-xs text-[#68756B] mt-0.5">
+                  Track confirmation status, factory review, and dispatch timeline for your bulk orders.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={loadMyOrders}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold border border-[#E6EBDD] hover:bg-[#F4F8F0] text-[#183D2B] flex items-center gap-1.5 shadow-sm"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-[#138443]" />
+                  <span>Refresh Status</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('catalog')}
+                  className="px-4 py-2 rounded-xl text-xs font-black bg-[#138443] hover:bg-[#0d6131] text-white shadow-md flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Place New Order</span>
+                </button>
+              </div>
+            </div>
+
+            {myOrders.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-[#E6EBDD] p-12 text-center shadow-sm space-y-4">
+                <div className="w-16 h-16 bg-[#F4F8F0] rounded-2xl flex items-center justify-center mx-auto text-[#138443]">
+                  <ClipboardList className="w-8 h-8" />
+                </div>
+                <div className="max-w-md mx-auto space-y-1">
+                  <h3 className="text-base font-bold text-[#183D2B]">No Wholesale Orders Placed Yet</h3>
+                  <p className="text-xs text-[#68756B]">
+                    Select cartons from our wholesale price catalog and send your order. You can monitor whether your order enquiry is Confirmed or Declined right here.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('catalog')}
+                  className="px-6 py-2.5 rounded-xl font-black text-xs bg-[#138443] hover:bg-[#0d6131] text-white shadow-md inline-flex items-center gap-2"
+                >
+                  <Boxes className="w-4 h-4" />
+                  <span>Browse Wholesale Catalog</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myOrders.map((ord) => {
+                  const isConfirmed = ord.status === 'Confirmed' || ord.status === 'Converted to Order' || ord.status === 'Accepted';
+                  const isDeclined = ord.status === 'Declined';
+                  const isPending = !isConfirmed && !isDeclined;
+
+                  return (
+                    <div
+                      key={ord.id}
+                      className="bg-white rounded-3xl border border-[#E6EBDD] p-5 sm:p-6 shadow-sm space-y-4 transition-all hover:shadow-md"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-[#E6EBDD]">
+                        <div>
+                          <div className="flex items-center gap-2.5">
+                            <span className="font-mono text-sm sm:text-base font-extrabold text-[#F7941D]">
+                              {ord.enquiry_number}
+                            </span>
+                            <span className="text-[11px] text-[#68756B]">
+                              Submitted {new Date(ord.created_at).toLocaleString('en-IN', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-[#183D2B] mt-1">
+                            {ord.business_name} • Contact: {ord.phone_number}
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          {isConfirmed ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>Order Confirmed by Admin</span>
+                            </span>
+                          ) : isDeclined ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
+                              <XCircle className="w-4 h-4 text-rose-600" />
+                              <span>Order Declined</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
+                              <Clock className="w-4 h-4 text-amber-600" />
+                              <span>Pending Confirmation</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Items Ordered Table */}
+                      <div>
+                        <div className="text-[11px] font-bold text-[#68756B] uppercase tracking-wider mb-2">
+                          Ordered Wholesale Products
+                        </div>
+                        <div className="border border-[#E6EBDD] rounded-2xl overflow-hidden divide-y divide-[#E6EBDD] text-xs">
+                          {(ord.items || []).map((item, idx) => (
+                            <div key={idx} className="p-3 bg-[#F9FAF6] flex justify-between items-center">
+                              <div>
+                                <div className="font-extrabold text-[#183D2B]">{item.product_name}</div>
+                                {item.pack_size && <div className="text-[11px] text-[#68756B]">{item.pack_size}</div>}
+                              </div>
+                              <div className="text-right">
+                                <span className="font-black text-[#138443] text-sm">
+                                  {item.requested_quantity} {item.unit_label || 'Cartons'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Order Footer & Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs">
+                        <div className="text-[11px] text-[#68756B]">
+                          {ord.additional_notes && (
+                            <span><strong className="text-[#183D2B]">Details:</strong> {ord.additional_notes}</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isConfirmed && (
+                            <button
+                              onClick={() => {
+                                const inv = generateInvoiceSlip(ord, ord.quotations || [], ord.items || []);
+                                setInvoiceData(inv);
+                              }}
+                              className="px-4 py-2 rounded-xl text-xs font-black bg-[#FFC928] hover:bg-yellow-400 text-[#183D2B] flex items-center gap-1.5 shadow-sm transition-all active:scale-98"
+                              title="View and print official JDM Proforma Invoice slip"
+                            >
+                              <Receipt className="w-3.5 h-3.5 text-[#183D2B]" />
+                              <span>View / Print Proforma Invoice</span>
+                            </button>
+                          )}
+
+                          <a
+                            href={`https://api.whatsapp.com/send?phone=919393122122&text=${encodeURIComponent(
+                              `Hello Juci Cool Factory, I am checking status on my Wholesale Order #${ord.enquiry_number} (Current status: ${ord.status}).`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>WhatsApp Factory Support</span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* CATALOG VIEW */
+          <>
+            {/* Dealer Privilege Overview Banner */}
+            <div className="bg-gradient-to-r from-[#138443] via-[#0d6131] to-[#183D2B] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10 space-y-4">
             <div className="inline-flex items-center gap-2 bg-[#FFC928]/20 border border-[#FFC928]/40 px-3 py-1 rounded-full text-xs font-bold text-[#FFC928]">
@@ -559,8 +841,17 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </>
+    )}
+  </main>
+
+  {invoiceData && (
+    <InvoiceSlipModal
+      invoiceData={invoiceData}
+      onClose={() => setInvoiceData(null)}
+    />
+  )}
+</div>
   );
 };
 
