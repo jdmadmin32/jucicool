@@ -41,6 +41,8 @@ import {
   getLocalDealers,
   createLocalDealer,
   deleteLocalDealer,
+  getDealerPasswordMap,
+  recordDealerPassword,
   getLocalCustomers,
   getLocalDashboardData,
   getLocalReports,
@@ -553,7 +555,16 @@ export async function fetchAdminBulkEnquiryById(id: number): Promise<any> {
     });
 
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      if (data && !data.enquiry && (data.id || data.enquiry_number)) {
+        return {
+          enquiry: data,
+          items: data.bulk_enquiry_items || data.items || [],
+          quotations: data.quotations || [],
+          history: data.history || []
+        };
+      }
+      return data;
     }
   } catch (err) {
     console.warn('fetchAdminBulkEnquiryById server unavailable, using local store:', err);
@@ -1139,7 +1150,24 @@ export async function fetchAdminDealers(): Promise<DealerRecord[]> {
     });
 
     if (res.ok) {
-      return await res.json();
+      const serverDealers = await res.json();
+      const localDealers = getLocalDealers();
+      const passwordMap = getDealerPasswordMap();
+
+      return (serverDealers || []).map((d: any) => {
+        const emailLower = (d.email || '').toLowerCase().trim();
+        const localMatch = localDealers.find(ld => (ld.email || '').toLowerCase().trim() === emailLower);
+        const resolvedPass = d.password || passwordMap[emailLower] || localMatch?.password || (emailLower === 'dealer@jucicool.com' ? 'dealer123' : 'dealer123');
+
+        return {
+          ...d,
+          password: resolvedPass,
+          fullName: d.full_name || d.fullName || 'Authorized Dealer',
+          businessName: d.business_name || d.businessName || 'Wholesale Partner',
+          customerType: d.customer_type || d.customerType || 'Dealer',
+          createdAt: d.created_at || d.createdAt || new Date().toISOString()
+        };
+      });
     }
   } catch (err) {
     console.warn('fetchAdminDealers server unavailable, using local store:', err);
@@ -1157,6 +1185,10 @@ export async function createAdminDealer(payload: {
   city?: string;
   state?: string;
 }): Promise<any> {
+  if (payload.email && payload.password) {
+    recordDealerPassword(payload.email, payload.password);
+  }
+
   try {
     const res = await fetch(`${API_BASE}/admin/dealers`, {
       method: 'POST',

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { DealerRecord } from '../../types';
 import { fetchAdminDealers, createAdminDealer, deleteAdminDealer } from '../../services/api';
+import { getStoredDealerPassword } from '../../services/adminStore';
 
 export const DealersTab: React.FC = () => {
   const [dealers, setDealers] = useState<DealerRecord[]>([]);
@@ -379,7 +380,7 @@ export const DealersTab: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4">
                       {(() => {
-                        const pwd = d.password || (d.email === 'dealer@jucicool.com' ? 'dealer123' : `Juci${((d.id * 149) % 9000) + 1000}#`);
+                        const pwd = d.password || getStoredDealerPassword(d.email);
                         const isVisible = isPasswordVisible(d.id);
                         return (
                           <div className="flex items-center gap-1.5">

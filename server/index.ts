@@ -1785,7 +1785,7 @@ app.delete('/api/admin/products/:id/images/:imageId', authenticateToken, require
 app.get('/api/admin/dealers', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   const dealers = db.prepare(`
     SELECT id, email, full_name, phone, role, business_name, customer_type, city, state, created_at,
-           COALESCE(raw_password, CASE WHEN email = 'dealer@jucicool.com' THEN 'dealer123' ELSE 'Juci' || (id * 137 % 9000 + 1000) || '#' END) as password
+           COALESCE(raw_password, 'dealer123') as password
     FROM users
     WHERE customer_type IN ('Dealer', 'Retailer', 'dealer_retailer') OR role = 'dealer'
     ORDER BY created_at DESC

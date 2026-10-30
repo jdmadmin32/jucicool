@@ -691,6 +691,44 @@ export default async function handler(
       });
     }
 
+    // -------------------------------------------------------------------------
+    // DEALER: Get dealer bulk enquiries
+    // GET /api/dealer/bulk-enquiries
+    // -------------------------------------------------------------------------
+    if (path === "/dealer/bulk-enquiries" && req.method === "GET") {
+      const email = String(req.query.email || "").toLowerCase().trim();
+      const phone = String(req.query.phone || "").trim();
+      const businessName = String(req.query.businessName || "").toLowerCase().trim();
+
+      let query = supabase
+        .from("bulk_enquiries")
+        .select("*, bulk_enquiry_items(*), quotations(*)")
+        .order("created_at", { ascending: false });
+
+      if (email) {
+        query = query.ilike("email", email);
+      } else if (phone) {
+        query = query.eq("phone_number", phone);
+      } else if (businessName) {
+        query = query.ilike("business_name", businessName);
+      } else {
+        query = query.eq("customer_type", "Dealer");
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      const enriched = (data || []).map((e: any) => ({
+        ...e,
+        items: e.bulk_enquiry_items || [],
+        quotations: e.quotations || [],
+      }));
+
+      return res.status(200).json(enriched);
+    }
+
     // Admin routes are not implemented in this file yet.
     
     // -------------------------------------------------------------------------
@@ -778,7 +816,13 @@ export default async function handler(
         return res.status(404).json({ error: "Bulk enquiry not found" });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json({
+        ...data,
+        enquiry: data,
+        items: data.bulk_enquiry_items || [],
+        quotations: data.quotations || [],
+        history: [],
+      });
     }
 
     // -------------------------------------------------------------------------
@@ -803,22 +847,21 @@ export default async function handler(
       const updates: Record<string, any> = {};
 
       if (body.status !== undefined) {
-        const allowedStatuses = [
-          "New",
-          "Contacted",
-          "Quoted",
-          "Converted",
-          "Rejected",
-          "Closed",
-        ];
-
-        if (!allowedStatuses.includes(body.status)) {
+        if (typeof body.status !== "string" || !body.status.trim()) {
           return res.status(400).json({
             error: "Invalid enquiry status",
           });
         }
 
-        updates.status = body.status;
+        updates.status = body.status.trim();
+      }
+
+      if (body.assignedTo !== undefined || body.assigned_to !== undefined) {
+        updates.assigned_to = body.assignedTo ?? body.assigned_to;
+      }
+
+      if (body.internalNotes !== undefined || body.internal_notes !== undefined) {
+        updates.internal_notes = body.internalNotes ?? body.internal_notes;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -842,7 +885,13 @@ export default async function handler(
         return res.status(404).json({ error: "Bulk enquiry not found" });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json({
+        ...data,
+        enquiry: data,
+        items: data.bulk_enquiry_items || [],
+        quotations: data.quotations || [],
+        message: "Enquiry updated successfully",
+      });
     }
 
     
@@ -1513,7 +1562,10 @@ export default async function handler(
       return res.status(201).json({
         message: "Dealer account created successfully",
         dealerId: newDealer.id,
-        dealer: newDealer,
+        dealer: {
+          ...newDealer,
+          password: String(password)
+        },
       });
     }
 

@@ -471,25 +471,66 @@ export function updateLocalWholesaleOrderStatus(id: number, data: any): Wholesal
 // ----------------------------------------------------
 // DEALERS STORE
 // ----------------------------------------------------
+export const DEALER_PASSWORDS_KEY = 'jucicool_dealer_passwords_v1';
+
+export function getDealerPasswordMap(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(DEALER_PASSWORDS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    if (!map['dealer@jucicool.com']) {
+      map['dealer@jucicool.com'] = 'dealer123';
+    }
+    return map;
+  } catch {
+    return { 'dealer@jucicool.com': 'dealer123' };
+  }
+}
+
+export function recordDealerPassword(email: string, pass: string): void {
+  if (!email || !pass) return;
+  try {
+    const map = getDealerPasswordMap();
+    map[email.toLowerCase().trim()] = String(pass).trim();
+    localStorage.setItem(DEALER_PASSWORDS_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn('Could not record dealer password', e);
+  }
+}
+
+export function getStoredDealerPassword(email?: string): string {
+  if (!email) return 'dealer123';
+  const map = getDealerPasswordMap();
+  return map[email.toLowerCase().trim()] || (email.toLowerCase().trim() === 'dealer@jucicool.com' ? 'dealer123' : 'dealer123');
+}
+
 export function getLocalDealers(): DealerRecord[] {
   const dealers = getStored<DealerRecord[]>(STORAGE_KEYS.DEALERS, INITIAL_DEALERS);
-  return dealers.map((d) => ({
-    ...d,
-    password: d.password || (d.email === 'dealer@jucicool.com' ? 'dealer123' : `Juci${((d.id * 149) % 9000) + 1000}#`),
-    full_name: d.full_name || d.fullName || 'Authorized Dealer',
-    fullName: d.fullName || d.full_name || 'Authorized Dealer',
-    business_name: d.business_name || d.businessName || 'Wholesale Partner',
-    businessName: d.businessName || d.business_name || 'Wholesale Partner',
-    customer_type: d.customer_type || d.customerType || 'Dealer',
-    customerType: d.customerType || d.customer_type || 'Dealer',
-    created_at: d.created_at || d.createdAt || new Date().toISOString(),
-    createdAt: d.createdAt || d.created_at || new Date().toISOString(),
-  }));
+  const passwordMap = getDealerPasswordMap();
+  return dealers.map((d) => {
+    const emailLower = (d.email || '').toLowerCase().trim();
+    const resolvedPass = d.password || passwordMap[emailLower] || (emailLower === 'dealer@jucicool.com' ? 'dealer123' : 'dealer123');
+    return {
+      ...d,
+      password: resolvedPass,
+      full_name: d.full_name || d.fullName || 'Authorized Dealer',
+      fullName: d.fullName || d.full_name || 'Authorized Dealer',
+      business_name: d.business_name || d.businessName || 'Wholesale Partner',
+      businessName: d.businessName || d.business_name || 'Wholesale Partner',
+      customer_type: d.customer_type || d.customerType || 'Dealer',
+      customerType: d.customerType || d.customer_type || 'Dealer',
+      created_at: d.created_at || d.createdAt || new Date().toISOString(),
+      createdAt: d.createdAt || d.created_at || new Date().toISOString(),
+    };
+  });
 }
 
 export function createLocalDealer(data: any): DealerRecord {
   const dealers = getLocalDealers();
-  const rawPass = data.password ? String(data.password).trim() : `Juci${Math.floor(1000 + Math.random() * 9000)}#`;
+  const rawPass = data.password ? String(data.password).trim() : 'dealer123';
+  if (data.email) {
+    recordDealerPassword(data.email, rawPass);
+  }
+
   const newDealer: DealerRecord = {
     id: Math.floor(100 + Math.random() * 900),
     email: data.email,
