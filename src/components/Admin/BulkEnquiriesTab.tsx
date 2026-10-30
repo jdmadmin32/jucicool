@@ -65,17 +65,33 @@ export const BulkEnquiriesTab: React.FC = () => {
   const handleOpenDetails = async (id: number) => {
     try {
       const full = await fetchAdminBulkEnquiryById(id);
-      setSelectedEnquiry(full);
-      setStatusDraft(full.enquiry.status);
-      setAssignedDraft(full.enquiry.assigned_to || '');
-      setNotesDraft(full.enquiry.internal_notes || '');
+      if (full && full.enquiry) {
+        setSelectedEnquiry(full);
+        setStatusDraft(full.enquiry.status || 'New');
+        setAssignedDraft(full.enquiry.assigned_to || '');
+        setNotesDraft(full.enquiry.internal_notes || '');
+        return;
+      }
     } catch (err) {
-      alert('Failed to load enquiry details');
+      console.warn('Error fetching detailed enquiry:', err);
+    }
+
+    const fallback = enquiries.find(e => e.id === id);
+    if (fallback) {
+      setSelectedEnquiry({
+        enquiry: fallback,
+        items: fallback.items || [],
+        quotations: (fallback as any).latestQuotation ? [(fallback as any).latestQuotation] : [],
+        history: []
+      });
+      setStatusDraft(fallback.status || 'New');
+      setAssignedDraft(fallback.assigned_to || '');
+      setNotesDraft(fallback.internal_notes || '');
     }
   };
 
   const handleSaveEnquiryStatus = async () => {
-    if (!selectedEnquiry) return;
+    if (!selectedEnquiry?.enquiry) return;
     setIsUpdating(true);
     try {
       await updateBulkEnquiryStatus(selectedEnquiry.enquiry.id, {
@@ -84,10 +100,25 @@ export const BulkEnquiriesTab: React.FC = () => {
         internalNotes: notesDraft,
       });
       await loadEnquiries();
-      const refreshed = await fetchAdminBulkEnquiryById(selectedEnquiry.enquiry.id);
-      setSelectedEnquiry(refreshed);
+      try {
+        const refreshed = await fetchAdminBulkEnquiryById(selectedEnquiry.enquiry.id);
+        if (refreshed?.enquiry) {
+          setSelectedEnquiry(refreshed);
+        } else {
+          setSelectedEnquiry({
+            ...selectedEnquiry,
+            enquiry: { ...selectedEnquiry.enquiry, status: statusDraft, assigned_to: assignedDraft, internal_notes: notesDraft }
+          });
+        }
+      } catch (_) {
+        setSelectedEnquiry({
+          ...selectedEnquiry,
+          enquiry: { ...selectedEnquiry.enquiry, status: statusDraft, assigned_to: assignedDraft, internal_notes: notesDraft }
+        });
+      }
+      alert('Pipeline updates saved successfully!');
     } catch (err: any) {
-      alert('Failed to update enquiry: ' + err.message);
+      alert('Failed to update enquiry: ' + (err.message || 'Unknown error'));
     } finally {
       setIsUpdating(false);
     }
