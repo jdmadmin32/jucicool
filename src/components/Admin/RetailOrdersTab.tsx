@@ -57,6 +57,11 @@ export const RetailOrdersTab: React.FC = () => {
 
   useEffect(() => {
     loadOrders();
+    const handleUpdate = () => loadOrders();
+    window.addEventListener('juci-retail-orders-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('juci-retail-orders-updated', handleUpdate);
+    };
   }, [statusFilter, searchTerm]);
 
   const handleOpenDetails = async (orderId: number) => {

@@ -589,12 +589,13 @@ app.post('/api/retail-orders', (req: Request, res: Response) => {
   const getProduct = db.prepare('SELECT id, name, pack_size, retail_price, wholesale_price, stock_quantity, min_wholesale_qty FROM products WHERE id = ? AND is_active = 1');
 
   for (const item of items) {
-    if (!item.productId || !item.quantity || item.quantity <= 0) {
+    const pid = item.productId || item.product_id;
+    if (!pid || !item.quantity || item.quantity <= 0) {
       return res.status(400).json({ error: 'Invalid product or quantity specified' });
     }
-    const prod = getProduct.get(item.productId) as any;
+    const prod = getProduct.get(pid) as any;
     if (!prod) {
-      return res.status(400).json({ error: `Product ID ${item.productId} is not available` });
+      return res.status(400).json({ error: `Product ID ${pid} is not available` });
     }
     // MOQ enforcement for dealer/retailer
     if (isDealer && prod.min_wholesale_qty && item.quantity < prod.min_wholesale_qty) {
@@ -1306,6 +1307,26 @@ app.patch('/api/admin/bulk-enquiries/:id', authenticateToken, requireAdmin, (req
   res.json({ message: 'Enquiry updated successfully' });
 });
 
+app.delete('/api/admin/bulk-enquiries/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const enquiryId = req.params.id;
+  const enquiry = db.prepare('SELECT * FROM bulk_enquiries WHERE id = ?').get(enquiryId) as any;
+  if (!enquiry) {
+    return res.status(404).json({ error: 'Bulk enquiry not found' });
+  }
+
+  // Also clean up related quotations and their items
+  const quotations = db.prepare('SELECT id FROM quotations WHERE enquiry_id = ?').all(enquiryId) as any[];
+  for (const q of quotations) {
+    db.prepare('DELETE FROM quotation_items WHERE quotation_id = ?').run(q.id);
+  }
+  db.prepare('DELETE FROM quotations WHERE enquiry_id = ?').run(enquiryId);
+  db.prepare("DELETE FROM status_history WHERE entity_type = 'bulk_enquiry' AND entity_id = ?").run(enquiryId);
+  db.prepare('DELETE FROM bulk_enquiries WHERE id = ?').run(enquiryId);
+
+  logAction('DELETE_BULK_ENQUIRY', req.user!.fullName, `Permanently deleted bulk enquiry #${enquiry.enquiry_number}`);
+  res.json({ message: 'Bulk enquiry deleted successfully' });
+});
+
 // 4. Quotations Management (Build & Manage Private Quotations)
 app.post('/api/admin/bulk-enquiries/:id/quotations', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   const enquiryId = req.params.id;
@@ -1610,6 +1631,21 @@ app.patch('/api/admin/wholesale-orders/:id', authenticateToken, requireAdmin, (r
 
   logAction('UPDATE_WHOLESALE_ORDER', req.user!.fullName, `Updated wholesale order #${current.order_number}`);
   res.json({ message: 'Wholesale order updated successfully' });
+});
+
+app.delete('/api/admin/wholesale-orders/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const orderId = req.params.id;
+  const current = db.prepare('SELECT * FROM wholesale_orders WHERE id = ?').get(orderId) as any;
+  if (!current) {
+    return res.status(404).json({ error: 'Wholesale order not found' });
+  }
+
+  db.prepare('DELETE FROM wholesale_order_items WHERE order_id = ?').run(orderId);
+  db.prepare("DELETE FROM status_history WHERE entity_type = 'wholesale_order' AND entity_id = ?").run(orderId);
+  db.prepare('DELETE FROM wholesale_orders WHERE id = ?').run(orderId);
+
+  logAction('DELETE_WHOLESALE_ORDER', req.user!.fullName, `Permanently deleted wholesale order #${current.order_number}`);
+  res.json({ message: 'Wholesale order deleted successfully' });
 });
 
 // 6. Product and Inventory Management
@@ -1978,7 +2014,46 @@ app.get('/api/admin/customers', authenticateToken, requireAdmin, (req: AuthReque
     FROM bulk_summary b
     FULL OUTER JOIN retail_summary r ON b.phone_number = r.customer_phone
     LEFT JOIN wholesale_summary w ON COALESCE(b.phone_number, r.customer_phone) = w.phone_number
-  `).all();
+  `).all() as any[];
+
+  // Also include registered users from users table (dealers, retailers, individuals)
+  try {
+    const registeredUsers = db.prepare(`
+      SELECT phone, full_name as name, email, city, state, business_name, customer_type, created_at as first_contact
+      FROM users
+      WHERE role != 'admin'
+    `).all() as any[];
+
+    const phoneMap = new Map<string, any>();
+    customers.forEach(c => {
+      const key = c.phone || c.email || c.name;
+      if (key) phoneMap.set(key, c);
+    });
+
+    registeredUsers.forEach(u => {
+      const key = u.phone || u.email || u.name;
+      if (key && !phoneMap.has(key)) {
+        customers.push({
+          phone: u.phone,
+          name: u.name,
+          email: u.email,
+          city: u.city || 'Hyderabad',
+          state: u.state || 'Telangana',
+          business_name: u.business_name,
+          customer_type: u.customer_type || 'Dealer',
+          retail_orders: 0,
+          retail_spend: 0,
+          bulk_enquiries: 0,
+          wholesale_orders: 0,
+          wholesale_spend: 0,
+          first_contact: u.first_contact
+        });
+        phoneMap.set(key, true);
+      }
+    });
+  } catch (err) {
+    console.warn('Error fetching registered users for customer directory:', err);
+  }
 
   res.json(customers);
 });

@@ -34,6 +34,13 @@ export const CustomerDirectoryTab: React.FC = () => {
 
   useEffect(() => {
     loadCustomers();
+    const handleUpdate = () => loadCustomers();
+    window.addEventListener('juci-customers-updated', handleUpdate);
+    window.addEventListener('juci-retail-orders-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('juci-customers-updated', handleUpdate);
+      window.removeEventListener('juci-retail-orders-updated', handleUpdate);
+    };
   }, []);
 
   const filtered = customers.filter(c => {

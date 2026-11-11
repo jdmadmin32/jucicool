@@ -14,7 +14,8 @@ import {
   XCircle,
   FileCheck,
   MessageCircle,
-  Receipt
+  Receipt,
+  Trash2
 } from 'lucide-react';
 import { BulkEnquiry, Quotation } from '../../types';
 import {
@@ -22,11 +23,13 @@ import {
   fetchAdminBulkEnquiryById,
   updateBulkEnquiryStatus,
   updateQuotationStatus,
-  convertQuotationToWholesaleOrder
+  convertQuotationToWholesaleOrder,
+  deleteAdminBulkEnquiry
 } from '../../services/api';
 import { QuotationBuilderModal } from './QuotationBuilderModal';
 import { PrintableQuotationModal } from './PrintableQuotationModal';
 import { InvoiceSlipModal, generateInvoiceSlip } from './InvoiceSlipModal';
+import { SecurityActionModal } from './DeleteConfirmationModal';
 
 export const BulkEnquiriesTab: React.FC = () => {
   const [enquiries, setEnquiries] = useState<BulkEnquiry[]>([]);
@@ -45,6 +48,12 @@ export const BulkEnquiriesTab: React.FC = () => {
   const [assignedDraft, setAssignedDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Security password modals
+  const [deleteSecurityOpen, setDeleteSecurityOpen] = useState(false);
+  const [updateSecurityOpen, setUpdateSecurityOpen] = useState(false);
+  const [pendingDeleteEnquiry, setPendingDeleteEnquiry] = useState<{ id: number; number: string; business: string } | null>(null);
+  const [isDeletingEnquiry, setIsDeletingEnquiry] = useState(false);
 
   const loadEnquiries = async () => {
     setLoading(true);
@@ -195,8 +204,31 @@ export const BulkEnquiriesTab: React.FC = () => {
     }
   };
 
-  const exportToCSV = () => {
-    if (!enquiries.length) return;
+  const promptDeleteEnquiry = (e: BulkEnquiry) => {
+    setPendingDeleteEnquiry({ id: e.id, number: e.enquiry_number, business: e.business_name || e.customer_name });
+    setDeleteSecurityOpen(true);
+  };
+
+  const handleAuthorizedDeleteEnquiry = async () => {
+    if (!pendingDeleteEnquiry) return;
+    setIsDeletingEnquiry(true);
+    try {
+      await deleteAdminBulkEnquiry(pendingDeleteEnquiry.id);
+      if (selectedEnquiry && selectedEnquiry.enquiry.id === pendingDeleteEnquiry.id) {
+        setSelectedEnquiry(null);
+      }
+      setDeleteSecurityOpen(false);
+      setPendingDeleteEnquiry(null);
+      await loadEnquiries();
+      alert(`Bulk enquiry #${pendingDeleteEnquiry.number} permanently deleted.`);
+    } catch (err: any) {
+      alert('Failed to delete enquiry: ' + (err.message || 'Error'));
+    } finally {
+      setIsDeletingEnquiry(false);
+    }
+  };
+
+  const exportToCSV = () => {    if (!enquiries.length) return;
     const headers = ['Reference Number,Business Name,Contact Person,Phone,Email,Customer Type,City,Status,Created At'];
     const rows = enquiries.map(e =>
       `"${e.enquiry_number}","${e.business_name}","${e.customer_name}","${e.phone_number}","${e.email || ''}","${e.customer_type}","${e.city}","${e.status}","${e.created_at}"`
@@ -398,6 +430,13 @@ export const BulkEnquiriesTab: React.FC = () => {
                             <XCircle className="w-3.5 h-3.5" />
                           </button>
                         )}
+                        <button
+                          onClick={() => promptDeleteEnquiry(e)}
+                          className="p-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-colors"
+                          title="Delete Enquiry (Requires admin password)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -707,7 +746,7 @@ export const BulkEnquiriesTab: React.FC = () => {
 
                 <div className="flex justify-end pt-1">
                   <button
-                    onClick={handleSaveEnquiryStatus}
+                    onClick={() => setUpdateSecurityOpen(true)}
                     disabled={isUpdating}
                     className="px-5 py-2 rounded-xl text-xs font-bold bg-[#138443] hover:bg-[#0d6131] text-white flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                   >
@@ -750,6 +789,39 @@ export const BulkEnquiriesTab: React.FC = () => {
           onClose={() => setInvoiceData(null)}
         />
       )}
+      {/* Bulk Enquiry Delete Security Password Modal */}
+      <SecurityActionModal
+        isOpen={deleteSecurityOpen}
+        actionType="delete"
+        title="Delete Bulk Enquiry"
+        itemName={pendingDeleteEnquiry ? `${pendingDeleteEnquiry.number} — ${pendingDeleteEnquiry.business}` : ''}
+        itemType="Bulk Enquiry"
+        description="This will permanently remove the enquiry, its quotations, and all pipeline history."
+        confirmButtonText="Delete Enquiry Permanently"
+        onClose={() => {
+          setDeleteSecurityOpen(false);
+          setPendingDeleteEnquiry(null);
+        }}
+        onConfirm={handleAuthorizedDeleteEnquiry}
+        isLoading={isDeletingEnquiry}
+      />
+
+      {/* Bulk Enquiry Update Security Password Modal */}
+      <SecurityActionModal
+        isOpen={updateSecurityOpen}
+        actionType="update"
+        title="Authorize Pipeline Updates"
+        itemName={selectedEnquiry?.enquiry?.enquiry_number || ''}
+        itemType="Bulk Enquiry Status"
+        description="Please authorize updating this enquiry's pipeline stage, assigned representative, and internal notes."
+        confirmButtonText="Authorize & Save Updates"
+        onClose={() => setUpdateSecurityOpen(false)}
+        onConfirm={async () => {
+          setUpdateSecurityOpen(false);
+          await handleSaveEnquiryStatus();
+        }}
+        isLoading={isUpdating}
+      />
     </div>
   );
 };

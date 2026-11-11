@@ -132,10 +132,25 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
         pincode: formData.pincode.trim(),
         paymentMethod: 'Direct Contact / WhatsApp Order',
         notes: formData.notes.trim() || undefined,
-        items: itemsSnapshot.map(it => ({
-          productId: it.product.id,
-          quantity: it.quantity,
-        })),
+        items: itemsSnapshot.map(it => {
+          const uPrice = getItemPrice(it.product);
+          return {
+            productId: it.product.id,
+            product_id: it.product.id,
+            name: it.product.name,
+            product_name: it.product.name,
+            packSize: it.product.pack_size || it.product.packaging_type || 'Bottle',
+            pack_size: it.product.pack_size || it.product.packaging_type || 'Bottle',
+            unitPrice: uPrice,
+            unit_price: uPrice,
+            quantity: it.quantity,
+            totalPrice: uPrice * it.quantity,
+            total_price: uPrice * it.quantity,
+          };
+        }),
+        subtotal: subtotalSnapshot,
+        deliveryFee: feeSnapshot,
+        totalAmount: totalSnapshot,
       };
 
       const result = await submitRetailOrder(orderPayload);

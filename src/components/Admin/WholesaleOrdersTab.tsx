@@ -10,10 +10,13 @@ import {
   Loader2,
   RefreshCw,
   X,
-  Building2
+  Building2,
+  Trash2,
+  ShieldCheck
 } from 'lucide-react';
 import { WholesaleOrder } from '../../types';
-import { fetchAdminWholesaleOrders, updateWholesaleOrderStatus } from '../../services/api';
+import { fetchAdminWholesaleOrders, updateWholesaleOrderStatus, deleteAdminWholesaleOrder } from '../../services/api';
+import { SecurityActionModal } from './DeleteConfirmationModal';
 
 export const WholesaleOrdersTab: React.FC = () => {
   const [orders, setOrders] = useState<WholesaleOrder[]>([]);
@@ -28,6 +31,12 @@ export const WholesaleOrdersTab: React.FC = () => {
   const [advanceDraft, setAdvanceDraft] = useState<number>(0);
   const [notesDraft, setNotesDraft] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Security modals for update and delete
+  const [updateSecurityOpen, setUpdateSecurityOpen] = useState(false);
+  const [deleteSecurityOpen, setDeleteSecurityOpen] = useState(false);
+  const [pendingDeleteOrder, setPendingDeleteOrder] = useState<WholesaleOrder | null>(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   const loadWholesaleOrders = async () => {
     setLoading(true);
@@ -69,6 +78,39 @@ export const WholesaleOrdersTab: React.FC = () => {
       alert('Failed to update wholesale order: ' + err.message);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const promptSaveOrder = () => {
+    setUpdateSecurityOpen(true);
+  };
+
+  const handleAuthorizedSave = async () => {
+    setUpdateSecurityOpen(false);
+    await handleSave();
+  };
+
+  const promptDeleteOrder = (o: WholesaleOrder) => {
+    setPendingDeleteOrder(o);
+    setDeleteSecurityOpen(true);
+  };
+
+  const handleAuthorizedDeleteOrder = async () => {
+    if (!pendingDeleteOrder) return;
+    setIsDeletingOrder(true);
+    try {
+      await deleteAdminWholesaleOrder(pendingDeleteOrder.id);
+      if (selectedOrder && selectedOrder.id === pendingDeleteOrder.id) {
+        setSelectedOrder(null);
+      }
+      setDeleteSecurityOpen(false);
+      setPendingDeleteOrder(null);
+      await loadWholesaleOrders();
+      alert(`Wholesale order ${pendingDeleteOrder.order_number} permanently deleted.`);
+    } catch (err: any) {
+      alert('Failed to delete wholesale order: ' + (err.message || 'Error'));
+    } finally {
+      setIsDeletingOrder(false);
     }
   };
 
@@ -223,12 +265,21 @@ export const WholesaleOrdersTab: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenEdit(o)}
-                        className="px-3 py-1.5 rounded-xl border border-[#E6EBDD] text-[#138443] hover:bg-[#F4F8F0] font-bold shadow-sm"
-                      >
-                        Manage
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEdit(o)}
+                          className="px-3 py-1.5 rounded-xl border border-[#E6EBDD] text-[#138443] hover:bg-[#F4F8F0] font-bold shadow-sm"
+                        >
+                          Manage
+                        </button>
+                        <button
+                          onClick={() => promptDeleteOrder(o)}
+                          className="p-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-colors"
+                          title="Delete Wholesale Order (Requires admin password)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -320,17 +371,47 @@ export const WholesaleOrdersTab: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={handleSave}
+                onClick={promptSaveOrder}
                 disabled={isUpdating}
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-[#138443] text-white hover:bg-[#0d6131] flex items-center gap-1.5 shadow"
               >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 <span>Save Consignment Status</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Security Modals */}
+      <SecurityActionModal
+        isOpen={updateSecurityOpen}
+        actionType="update"
+        title="Confirm Wholesale Order Update"
+        itemName={selectedOrder ? `${selectedOrder.order_number} (${selectedOrder.business_name})` : ''}
+        itemType="Wholesale Order Status"
+        description="Please confirm you want to save updates to fulfillment, payment status, and dispatch notes."
+        confirmButtonText="Authorize & Save Updates"
+        onClose={() => setUpdateSecurityOpen(false)}
+        onConfirm={handleAuthorizedSave}
+        isLoading={isUpdating}
+      />
+
+      <SecurityActionModal
+        isOpen={deleteSecurityOpen}
+        actionType="delete"
+        title="Delete Wholesale Order"
+        itemName={pendingDeleteOrder ? `${pendingDeleteOrder.order_number} (${pendingDeleteOrder.business_name})` : ''}
+        itemType="Wholesale Order"
+        description="This will permanently delete this wholesale consignment record."
+        confirmButtonText="Delete Order Permanently"
+        onClose={() => {
+          setDeleteSecurityOpen(false);
+          setPendingDeleteOrder(null);
+        }}
+        onConfirm={handleAuthorizedDeleteOrder}
+        isLoading={isDeletingOrder}
+      />
     </div>
   );
 };

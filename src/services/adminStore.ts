@@ -1,6 +1,7 @@
 import {
   Product,
   RetailOrder,
+  RetailOrderItem,
   BulkEnquiry,
   BulkEnquiryItem,
   WholesaleOrder,
@@ -179,6 +180,94 @@ export function deleteLocalRetailOrder(id: number): void {
   const orders = getStored<RetailOrder[]>(STORAGE_KEYS.RETAIL_ORDERS, INITIAL_RETAIL_ORDERS);
   const updated = orders.filter(o => o.id !== Number(id));
   setStored(STORAGE_KEYS.RETAIL_ORDERS, updated);
+}
+
+export function createLocalRetailOrder(payload: any): RetailOrder {
+  const orders = getStored<RetailOrder[]>(STORAGE_KEYS.RETAIL_ORDERS, INITIAL_RETAIL_ORDERS);
+  const products = getStored<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+
+  const orderId = Date.now();
+  const orderNumber = payload.orderNumber || `JC-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  let calculatedSubtotal = 0;
+  const items: RetailOrderItem[] = [];
+  let totalQty = 0;
+
+  if (Array.isArray(payload.items) && payload.items.length > 0) {
+    for (let i = 0; i < payload.items.length; i++) {
+      const it = payload.items[i];
+      const prod = products.find(p => p.id === (it.productId || it.product_id));
+      const pName = it.name || it.product_name || prod?.name || `Product #${it.productId || it.product_id}`;
+      const pPack = it.packSize || it.pack_size || prod?.pack_size || 'Bottle';
+      const uPrice = Number(it.unitPrice || it.unit_price || prod?.retail_price || 20);
+      const q = Number(it.quantity || 1);
+      const lineTotal = Number(it.totalPrice || it.total_price || (uPrice * q));
+
+      calculatedSubtotal += lineTotal;
+      totalQty += q;
+
+      items.push({
+        id: orderId + i + 1,
+        order_id: orderId,
+        product_id: it.productId || it.product_id || (prod ? prod.id : 1),
+        product_name: pName,
+        pack_size: pPack,
+        unit_price: uPrice,
+        quantity: q,
+        total_price: lineTotal,
+      });
+
+      // Deduct stock quantity in local inventory
+      if (prod) {
+        prod.stock_quantity = Math.max(0, prod.stock_quantity - q);
+      }
+    }
+  }
+
+  // Update products store with updated stock
+  setStored(STORAGE_KEYS.PRODUCTS, products);
+
+  const subtotal = payload.subtotal !== undefined ? Number(payload.subtotal) : calculatedSubtotal;
+  const deliveryFee = payload.deliveryFee !== undefined ? Number(payload.deliveryFee) : (subtotal >= 100 ? 0 : 20);
+  const totalAmount = payload.totalAmount !== undefined ? Number(payload.totalAmount) : (subtotal + deliveryFee);
+
+  const newOrder: RetailOrder = {
+    id: orderId,
+    order_number: orderNumber,
+    customer_name: (payload.customerName || payload.customer_name || 'Retail Customer').trim(),
+    customer_phone: (payload.customerPhone || payload.customer_phone || '').trim(),
+    customer_email: (payload.customerEmail || payload.customer_email || '').trim() || undefined,
+    delivery_address: (payload.deliveryAddress || payload.delivery_address || '').trim(),
+    city: (payload.city || 'Hyderabad').trim(),
+    state: (payload.state || 'Telangana').trim(),
+    pincode: (payload.pincode || '500001').trim(),
+    subtotal,
+    delivery_fee: deliveryFee,
+    total_amount: totalAmount,
+    payment_method: payload.paymentMethod || payload.payment_method || 'Direct Contact / WhatsApp Order',
+    payment_status: payload.paymentStatus || payload.payment_status || 'Pending',
+    order_status: payload.orderStatus || payload.order_status || 'New',
+    notes: (payload.notes || 'Placed online via store checkout').trim(),
+    created_at: new Date().toISOString(),
+    items,
+    itemCount: items.length,
+    totalItemsQuantity: totalQty,
+  };
+
+  // Add to beginning of orders list
+  orders.unshift(newOrder);
+  setStored(STORAGE_KEYS.RETAIL_ORDERS, orders);
+
+  // Dispatch events to refresh open tabs in admin panel & catalog
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('juci-retail-orders-updated', { detail: newOrder }));
+      window.dispatchEvent(new CustomEvent('juci-customers-updated'));
+      window.dispatchEvent(new CustomEvent('juci-catalog-updated'));
+    }
+  } catch {}
+
+  return newOrder;
 }
 
 // ----------------------------------------------------
@@ -690,6 +779,96 @@ export function getLocalCustomers(): CustomerRecord[] {
       c.wholesale_spend += wsSpend;
     }
   }
+
+  // Add from registered dealers & retail partners
+  const dealers = getStored<DealerRecord[]>(STORAGE_KEYS.DEALERS, INITIAL_DEALERS);
+  for (const d of dealers) {
+    const key = d.phone || d.email || d.businessName || d.fullName;
+    if (!key) continue;
+    if (!customerMap.has(key)) {
+      customerMap.set(key, {
+        id: d.id,
+        name: d.fullName || 'Dealer Partner',
+        phone: d.phone || '',
+        email: d.email,
+        business_name: d.businessName,
+        customer_type: d.customerType || 'Dealer',
+        city: d.city || 'Hyderabad',
+        state: d.state || 'Telangana',
+        retail_orders: 0,
+        retail_spend: 0,
+        bulk_enquiries: 0,
+        wholesale_orders: 0,
+        wholesale_spend: 0,
+        first_contact: d.createdAt || new Date().toISOString(),
+        last_contact: d.createdAt || new Date().toISOString(),
+      });
+    } else {
+      const c = customerMap.get(key)!;
+      if (d.businessName) c.business_name = d.businessName;
+      if (d.customerType) c.customer_type = d.customerType;
+    }
+  }
+
+  // Add from registered website customer users
+  try {
+    const rawUsers = localStorage.getItem('juci_customer_users');
+    if (rawUsers) {
+      const parsedUsers = JSON.parse(rawUsers);
+      if (Array.isArray(parsedUsers)) {
+        for (const u of parsedUsers) {
+          const key = u.phone || u.email || u.fullName;
+          if (!key) continue;
+          if (!customerMap.has(key)) {
+            customerMap.set(key, {
+              id: u.id || Date.now(),
+              name: u.fullName || 'Customer',
+              phone: u.phone || '',
+              email: u.email || '',
+              business_name: u.businessName,
+              customer_type: u.customerType || 'Individual',
+              city: u.city || 'Hyderabad',
+              state: u.state || 'Telangana',
+              retail_orders: 0,
+              retail_spend: 0,
+              bulk_enquiries: 0,
+              wholesale_orders: 0,
+              wholesale_spend: 0,
+              first_contact: u.createdAt || new Date().toISOString(),
+              last_contact: u.createdAt || new Date().toISOString(),
+            });
+          }
+        }
+      }
+    }
+
+    const currentLoggedInRaw = localStorage.getItem('juci_customer_user');
+    if (currentLoggedInRaw) {
+      const cur = JSON.parse(currentLoggedInRaw);
+      if (cur) {
+        const key = cur.phone || cur.email || cur.fullName;
+        if (key && !customerMap.has(key)) {
+          customerMap.set(key, {
+            id: cur.id || Date.now(),
+            name: cur.fullName || 'Customer',
+            phone: cur.phone || '',
+            email: cur.email || '',
+            business_name: cur.businessName,
+            customer_type: cur.customerType || 'Individual',
+            city: cur.city || 'Hyderabad',
+            state: cur.state || 'Telangana',
+            retail_orders: 0,
+            retail_spend: 0,
+            bulk_enquiries: 0,
+            wholesale_orders: 0,
+            wholesale_spend: 0,
+            first_contact: cur.createdAt || new Date().toISOString(),
+            last_contact: cur.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    }
+  } catch {}
 
   return Array.from(customerMap.values());
 }

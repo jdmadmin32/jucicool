@@ -27,9 +27,12 @@ import {
   createLocalProduct,
   deleteLocalProduct,
   getLocalRetailOrders,
+  createLocalRetailOrder,
   getLocalRetailOrderById,
   updateLocalRetailOrderStatus,
   deleteLocalRetailOrder,
+  deleteLocalBulkEnquiry,
+  deleteLocalWholesaleOrder,
   getLocalBulkEnquiries,
   getLocalBulkEnquiryById,
   updateLocalBulkEnquiryStatus,
@@ -279,19 +282,72 @@ export async function loginCustomerOrAdmin(
 
 
 export async function submitRetailOrder(payload: any): Promise<any> {
-  const res = await fetch(`${API_BASE}/retail-orders`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  let backendData: any = null;
 
-  const data = await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/retail-orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-  if (!res.ok) {
-    throw new Error(data.error || 'Failed to place order');
+    if (res.ok) {
+      backendData = await res.json();
+    }
+  } catch (err) {
+    console.warn('Backend retail order endpoint unavailable, using local store:', err);
   }
 
-  return data;
+  // Always create in local store so both Admin Panel and Customer Directory reflect it immediately
+  const localOrder = createLocalRetailOrder({
+    ...payload,
+    orderNumber: backendData?.orderNumber || payload.orderNumber,
+  });
+
+  // Attempt Supabase sync if configured
+  try {
+    if (typeof submitRetailOrderToSupabase === 'function') {
+      await submitRetailOrderToSupabase({
+        customer_name: payload.customerName || payload.customer_name,
+        customer_phone: payload.customerPhone || payload.customer_phone,
+        customer_email: payload.customerEmail || payload.customer_email,
+        delivery_address: payload.deliveryAddress || payload.delivery_address,
+        city: payload.city,
+        state: payload.state || 'Telangana',
+        pincode: payload.pincode || '500001',
+        payment_method: payload.paymentMethod || payload.payment_method || 'Direct Contact / WhatsApp Order',
+        items: (localOrder.items || []).map(it => ({
+          product_id: it.product_id,
+          product_name: it.product_name,
+          pack_size: it.pack_size,
+          unit_price: it.unit_price,
+          quantity: it.quantity,
+          total_price: it.total_price,
+        })),
+        subtotal: localOrder.subtotal,
+        delivery_fee: localOrder.delivery_fee,
+        total_amount: localOrder.total_amount,
+        notes: payload.notes,
+      });
+    }
+  } catch (sbErr) {
+    console.warn('Supabase retail order sync notice:', sbErr);
+  }
+
+  if (backendData) {
+    return {
+      ...backendData,
+      orderNumber: backendData.orderNumber || localOrder.order_number,
+      order: localOrder,
+    };
+  }
+
+  return {
+    success: true,
+    orderNumber: localOrder.order_number,
+    id: localOrder.id,
+    order: localOrder,
+  };
 }
 export async function trackRetailOrder(query: string): Promise<any> {
   const res = await fetch(
@@ -455,6 +511,8 @@ export async function fetchAdminRetailOrders(
   status?: string,
   search?: string
 ): Promise<RetailOrder[]> {
+  const localOrders = getLocalRetailOrders(status, search);
+
   try {
     const query = new URLSearchParams();
     if (status) query.append('status', status);
@@ -466,13 +524,27 @@ export async function fetchAdminRetailOrders(
     );
 
     if (res.ok) {
-      return await res.json();
+      const serverOrders: RetailOrder[] = await res.json();
+      const serverMap = new Map<string, RetailOrder>();
+      serverOrders.forEach(o => {
+        const key = o.order_number || String(o.id);
+        serverMap.set(key, o);
+      });
+
+      const merged = [...serverOrders];
+      localOrders.forEach(lo => {
+        const key = lo.order_number || String(lo.id);
+        if (!serverMap.has(key)) {
+          merged.unshift(lo);
+        }
+      });
+      return merged;
     }
   } catch (err) {
     console.warn('fetchAdminRetailOrders server unavailable, using local store:', err);
   }
 
-  return getLocalRetailOrders(status, search);
+  return localOrders;
 }
 
 export async function fetchAdminRetailOrderById(id: number): Promise<any> {
@@ -633,6 +705,25 @@ export async function updateBulkEnquiryStatus(
   return { success: true, enquiry: updated };
 }
 
+export async function deleteAdminBulkEnquiry(id: number): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/bulk-enquiries/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() },
+    });
+
+    if (res.ok) {
+      deleteLocalBulkEnquiry(id);
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('deleteAdminBulkEnquiry server unavailable, deleting locally:', err);
+  }
+
+  deleteLocalBulkEnquiry(id);
+  return { success: true };
+}
+
 export async function createQuotationForEnquiry(
   enquiryId: number,
   quotationData: any
@@ -771,6 +862,25 @@ export async function updateWholesaleOrderStatus(
 
   const updated = updateLocalWholesaleOrderStatus(id, data);
   return { success: true, order: updated };
+}
+
+export async function deleteAdminWholesaleOrder(id: number): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/wholesale-orders/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() },
+    });
+
+    if (res.ok) {
+      deleteLocalWholesaleOrder(id);
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('deleteAdminWholesaleOrder server unavailable, deleting locally:', err);
+  }
+
+  deleteLocalWholesaleOrder(id);
+  return { success: true };
 }
 
 // ----------------------------------------------------
@@ -1129,19 +1239,52 @@ export async function deleteProductImage(
 // ----------------------------------------------------
 
 export async function fetchAdminCustomers(): Promise<CustomerRecord[]> {
+  const localCustomers = getLocalCustomers();
+
   try {
     const res = await fetch(`${API_BASE}/admin/customers`, {
       headers: { ...getAuthHeader() },
     });
 
     if (res.ok) {
-      return await res.json();
+      const rawServer: any[] = await res.json();
+      const serverCustomers: CustomerRecord[] = (rawServer || []).map((c: any) => ({
+        id: c.id,
+        name: c.name || c.full_name || 'Customer',
+        phone: c.phone || '',
+        email: c.email || undefined,
+        business_name: c.business_name || undefined,
+        customer_type: c.customer_type || 'Individual',
+        city: c.city || 'Hyderabad',
+        state: c.state || 'Telangana',
+        retail_orders: c.retail_orders ?? 0,
+        retail_spend: c.retail_spend ?? 0,
+        bulk_enquiries: c.bulk_enquiries ?? 0,
+        wholesale_orders: c.wholesale_orders ?? 0,
+        wholesale_spend: c.wholesale_spend ?? 0,
+        first_contact: c.first_contact || c.created_at || new Date().toISOString(),
+      }));
+
+      const phoneMap = new Map<string, CustomerRecord>();
+      serverCustomers.forEach(c => {
+        const key = c.phone || c.email || c.name;
+        if (key) phoneMap.set(key, c);
+      });
+
+      const merged = [...serverCustomers];
+      localCustomers.forEach(lc => {
+        const key = lc.phone || lc.email || lc.name;
+        if (key && !phoneMap.has(key)) {
+          merged.push(lc);
+        }
+      });
+      return merged;
     }
   } catch (err) {
     console.warn('fetchAdminCustomers server unavailable, aggregating locally:', err);
   }
 
-  return getLocalCustomers();
+  return localCustomers;
 }
 
 export async function fetchAdminReports(): Promise<any> {

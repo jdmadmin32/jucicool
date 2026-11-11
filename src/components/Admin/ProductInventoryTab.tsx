@@ -12,11 +12,13 @@ import {
   X,
   RefreshCw,
   Search,
+  ShieldCheck,
   Image as ImageIcon
 } from 'lucide-react';
 import { Product } from '../../types';
 import { fetchAdminProducts, updateAdminProduct, createAdminProduct, deleteAdminProduct } from '../../services/api';
 import { SinglePhotoUpload, MultiPhotoUpload } from './SoftCopyPhotoUploader';
+import { SecurityActionModal } from './DeleteConfirmationModal';
 
 export const ProductInventoryTab: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -28,6 +30,11 @@ export const ProductInventoryTab: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  // Product Delete & Update Security Modals
+  const [deleteSecurityOpen, setDeleteSecurityOpen] = useState(false);
+  const [updateSecurityOpen, setUpdateSecurityOpen] = useState(false);
+  const [pendingDeleteProduct, setPendingDeleteProduct] = useState<{ id: number; name: string } | null>(null);
 
   // New Product Form
   const [newProd, setNewProd] = useState({
@@ -82,27 +89,37 @@ export const ProductInventoryTab: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (prodId: number, prodName: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete "${prodName}"?\nThis will completely remove the product and all associated soft copy photos from the database.`)) {
-      return;
-    }
-    setIsDeleting(prodId);
+  const handleDeleteProduct = (prodId: number, prodName: string) => {
+    setPendingDeleteProduct({ id: prodId, name: prodName });
+    setDeleteSecurityOpen(true);
+  };
+
+  const handleAuthorizedDeleteProduct = async () => {
+    if (!pendingDeleteProduct) return;
+    setIsDeleting(pendingDeleteProduct.id);
+    setDeleteSecurityOpen(false);
     try {
-      await deleteAdminProduct(prodId);
+      await deleteAdminProduct(pendingDeleteProduct.id);
       await loadProducts();
-      if (editingProduct && editingProduct.id === prodId) {
+      if (editingProduct && editingProduct.id === pendingDeleteProduct.id) {
         setEditingProduct(null);
       }
-      alert(`"${prodName}" and its stored images have been permanently deleted from the database.`);
+      alert(`"${pendingDeleteProduct.name}" and its stored images have been permanently deleted.`);
     } catch (err: any) {
       alert('Failed to delete product: ' + err.message);
     } finally {
       setIsDeleting(null);
+      setPendingDeleteProduct(null);
     }
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  const handleSaveEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingProduct) return;
+    setUpdateSecurityOpen(true);
+  };
+
+  const handleAuthorizedSaveEdit = async () => {
     if (!editingProduct) return;
     setIsSaving(true);
     try {
@@ -124,6 +141,7 @@ export const ProductInventoryTab: React.FC = () => {
       });
       await loadProducts();
       setEditingProduct(null);
+      setUpdateSecurityOpen(false);
     } catch (err: any) {
       alert('Failed to save product updates: ' + err.message);
     } finally {
@@ -356,7 +374,7 @@ export const ProductInventoryTab: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveEditSubmit} className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-[#183D2B] mb-1">Product Title</label>
                 <input
@@ -698,6 +716,36 @@ export const ProductInventoryTab: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Product Delete Security Password Modal */}
+      <SecurityActionModal
+        isOpen={deleteSecurityOpen}
+        actionType="delete"
+        title="Confirm Product Deletion"
+        itemName={pendingDeleteProduct?.name || ''}
+        itemType="Product"
+        description="You are about to permanently remove this product and all its stored soft-copy images from the database."
+        confirmButtonText="Delete Product Permanently"
+        onClose={() => {
+          setDeleteSecurityOpen(false);
+          setPendingDeleteProduct(null);
+        }}
+        onConfirm={handleAuthorizedDeleteProduct}
+        isLoading={isDeleting !== null}
+      />
+
+      {/* Product Update Security Password Modal */}
+      <SecurityActionModal
+        isOpen={updateSecurityOpen}
+        actionType="update"
+        title="Authorize Product Updates"
+        itemName={editingProduct?.name || ''}
+        itemType="Beverage Product"
+        description="Please authorize modifying pricing, stock, description, or pictures for this product."
+        confirmButtonText="Authorize & Save Product"
+        onClose={() => setUpdateSecurityOpen(false)}
+        onConfirm={handleAuthorizedSaveEdit}
+        isLoading={isSaving}
+      />
     </div>
   );
 };

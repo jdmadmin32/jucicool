@@ -20,6 +20,7 @@ import {
   vacuumDatabase,
   clearOldDatabaseLogs
 } from '../../services/api';
+import { SecurityActionModal } from './DeleteConfirmationModal';
 
 interface DatabaseStorageAlertModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const DatabaseStorageAlertModal: React.FC<DatabaseStorageAlertModalProps>
   const [isClearingLogs, setIsClearingLogs] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [simulatedMode, setSimulatedMode] = useState<string | null>(null);
+  const [clearSecurityOpen, setClearSecurityOpen] = useState(false);
 
   const loadStatus = async (simMode = simulatedMode) => {
     setLoading(true);
@@ -77,10 +79,12 @@ export const DatabaseStorageAlertModal: React.FC<DatabaseStorageAlertModalProps>
     }
   };
 
-  const handleClearLogs = async () => {
-    if (!window.confirm('Are you sure you want to purge older audit logs to free up database storage? This action cannot be undone.')) {
-      return;
-    }
+  const handleClearLogs = () => {
+    setClearSecurityOpen(true);
+  };
+
+  const handleAuthorizedClearLogs = async () => {
+    setClearSecurityOpen(false);
     setIsClearingLogs(true);
     setActionMessage(null);
     try {
@@ -380,6 +384,20 @@ export const DatabaseStorageAlertModal: React.FC<DatabaseStorageAlertModalProps>
           </button>
         </div>
       </div>
+
+      {/* Security Password Modal for Purging Database Logs */}
+      <SecurityActionModal
+        isOpen={clearSecurityOpen}
+        actionType="delete"
+        title="Authorize Database Log Purge"
+        itemName="Audit and Status History Logs"
+        itemType="Database Logs"
+        description="This will permanently delete historical audit records to reclaim database storage space. This action cannot be undone."
+        confirmButtonText="Authorize & Purge Logs"
+        onClose={() => setClearSecurityOpen(false)}
+        onConfirm={handleAuthorizedClearLogs}
+        isLoading={isClearingLogs}
+      />
     </div>
   );
 };
