@@ -62,19 +62,28 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
           <div className="absolute -top-12 -right-12 w-64 h-64 bg-[#8CC63E]/20 rounded-full blur-2xl pointer-events-none" />
           
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative z-10">
-            <div className="md:col-span-8 space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFC928] text-[#183D2B] text-[10px] sm:text-xs font-black uppercase tracking-wider">
-                <UserCheck className="w-3.5 h-3.5" /> Leadership & Vision
+            <div className="md:col-span-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-[#FFC928] via-white to-[#8CC63E] p-1 shadow-xl shrink-0 overflow-hidden">
+                <img
+                  src="/images/chairman.jpg"
+                  alt="Mr. A. Chandra Sheker Reddy"
+                  className="w-full h-full object-cover object-top rounded-full bg-[#183D2B]"
+                />
               </div>
-              <h3 className="text-xl sm:text-2xl font-black font-poppins">
-                Mr. A. Chandra Sheker Reddy
-              </h3>
-              <p className="text-xs font-semibold text-[#8CC63E] uppercase tracking-wide">
-                Founder & Managing Director • JDM Fruit Products Pvt. Ltd.
-              </p>
-              <p className="text-xs sm:text-sm text-white/90 leading-relaxed max-w-2xl">
-                The entrepreneurial force behind JDM’s establishment and development. Under his leadership, JDM developed dedicated PET bottle and cup-filling production lines, manufacturing for Tata Consumer Products (2014–2024) and commencing commercial production for Reliance on 30 December 2025.
-              </p>
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFC928] text-[#183D2B] text-[10px] sm:text-xs font-black uppercase tracking-wider">
+                  <UserCheck className="w-3.5 h-3.5" /> Leadership & Vision
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black font-poppins">
+                  Mr. A. Chandra Sheker Reddy
+                </h3>
+                <p className="text-xs font-semibold text-[#8CC63E] uppercase tracking-wide">
+                  Founder & Managing Director • JDM Fruit Products Pvt. Ltd.
+                </p>
+                <p className="text-xs sm:text-sm text-white/90 leading-relaxed max-w-2xl">
+                  The entrepreneurial force behind JDM’s establishment and development. Under his leadership, JDM developed dedicated PET bottle and cup-filling production lines, manufacturing for Tata Consumer Products (2014–2024) and commencing commercial production for Reliance on 30 December 2025.
+                </p>
+              </div>
             </div>
 
             <div className="md:col-span-4 flex flex-col sm:flex-row md:flex-col justify-center gap-2.5">

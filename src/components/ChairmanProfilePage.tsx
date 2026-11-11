@@ -69,11 +69,13 @@ export const ChairmanProfilePage: React.FC<ChairmanProfilePageProps> = ({
               <div className="relative w-full max-w-sm">
                 <div className="relative rounded-3xl overflow-hidden bg-white/10 p-2 border border-white/20 shadow-2xl backdrop-blur-md">
                   <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-[#183D2B]/80 to-[#138443]/90 aspect-[4/5] flex flex-col items-center justify-center p-6 text-center relative">
-                    {/* Executive Avatar / Icon Badge */}
-                    <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-[#FFC928] via-white to-[#8CC63E] p-1.5 shadow-xl mb-4">
-                      <div className="w-full h-full rounded-full bg-[#183D2B] flex items-center justify-center text-white font-extrabold text-3xl sm:text-4xl font-poppins border-2 border-white/40">
-                        CR
-                      </div>
+                    {/* Executive Portrait Photo */}
+                    <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-tr from-[#FFC928] via-white to-[#8CC63E] p-1.5 shadow-2xl mb-4 overflow-hidden">
+                      <img
+                        src="/images/chairman.jpg"
+                        alt="Mr. A. Chandra Sheker Reddy - Chairman & Managing Director"
+                        className="w-full h-full object-cover object-top rounded-full bg-[#183D2B]"
+                      />
                     </div>
 
                     <h3 className="text-xl sm:text-2xl font-black text-white font-poppins tracking-tight">
