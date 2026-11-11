@@ -252,7 +252,7 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
       'Please confirm factory dispatch timeline and warehouse freight details. Thank you!',
     ].join('\n');
 
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=919393122122&text=${encodeURIComponent(messageLines)}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=919391122122&text=${encodeURIComponent(messageLines)}`;
     window.open(whatsappUrl, '_blank');
     setOrderSentSuccess(true);
     setOrderItems([]);
@@ -300,13 +300,13 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
           {/* Quick Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
             <a
-              href="https://api.whatsapp.com/send?phone=919393122122&text=Hello%20Juci%20Cool%20Commercial%20Desk,%20this%20is%20authorized%20dealer%20calling%20regarding%20wholesale%20supply."
+              href="https://api.whatsapp.com/send?phone=919391122122&text=Hello%20Juci%20Cool%20Commercial%20Desk,%20this%20is%20authorized%20dealer%20calling%20regarding%20wholesale%20supply."
               target="_blank"
               rel="noopener noreferrer"
               className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366]/20 border border-[#25D366]/50 text-[#8CC63E] text-xs font-bold hover:bg-[#25D366]/30 transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-              <span>Direct WhatsApp: +91 9393122122</span>
+              <span>Direct WhatsApp: +91 9391122122</span>
             </a>
 
             <button
@@ -512,7 +512,7 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
                           )}
 
                           <a
-                            href={`https://api.whatsapp.com/send?phone=919393122122&text=${encodeURIComponent(
+                            href={`https://api.whatsapp.com/send?phone=919391122122&text=${encodeURIComponent(
                               `Hello Juci Cool Factory, I am checking status on my Wholesale Order #${ord.enquiry_number} (Current status: ${ord.status}).`
                             )}`}
                             target="_blank"
@@ -569,7 +569,7 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
                 <div className="text-[11px] text-white/70">Wholesale Desk</div>
-                <div className="text-xl font-black text-white">9393122122</div>
+                <div className="text-xl font-black text-white">9391122122</div>
                 <div className="text-[10px] text-emerald-300">Priority WhatsApp Line</div>
               </div>
             </div>
@@ -649,7 +649,7 @@ export const DealerPortalPage: React.FC<DealerPortalPageProps> = ({ onBackToStor
                   className="px-5 py-2.5 rounded-2xl font-bold text-xs bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-lg shadow-[#25D366]/30 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95"
                 >
                   <MessageCircle className="w-4 h-4 fill-white text-[#25D366]" />
-                  <span>Send Order to WhatsApp (9393122122)</span>
+                  <span>Send Order to WhatsApp (9391122122)</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </button>
               </div>

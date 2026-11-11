@@ -113,7 +113,7 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
     }
 
     // Build WhatsApp message
-    const whatsappPhone = '919393122122';
+    const whatsappPhone = '919391122122';
     const messageLines = [
       '📦 *BULK WHOLESALE ENQUIRY - JUCI COOL* 📦',
       '━━━━━━━━━━━━━━━━━━━━━',
@@ -221,7 +221,7 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
               </div>
 
               <p className="text-xs sm:text-sm text-[#68756B] max-w-sm mx-auto leading-relaxed">
-                We've also redirected your enquiry directly to Juci Cool on WhatsApp (<strong>+91 9393122122</strong>). If WhatsApp didn't open automatically, tap below:
+                We've also redirected your enquiry directly to Juci Cool on WhatsApp (<strong>+91 9391122122</strong>). If WhatsApp didn't open automatically, tap below:
               </p>
 
               {whatsappUrl && (
@@ -233,7 +233,7 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
                     className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/30 transition-all transform hover:scale-105 active:scale-95"
                   >
                     <MessageCircle className="w-5 h-5 fill-white text-[#25D366]" />
-                    <span>Open in WhatsApp (+91 9393122122)</span>
+                    <span>Open in WhatsApp (+91 9391122122)</span>
                     <ExternalLink className="w-4 h-4 opacity-80" />
                   </a>
                 </div>
@@ -385,7 +385,7 @@ export const BulkEnquiryModal: React.FC<BulkEnquiryModalProps> = ({
                 ) : (
                   <>
                     <MessageCircle className="w-5 h-5 fill-white text-[#138443]" />
-                    <span>Submit & Connect on WhatsApp (+91 9393122122)</span>
+                    <span>Submit & Connect on WhatsApp (+91 9391122122)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

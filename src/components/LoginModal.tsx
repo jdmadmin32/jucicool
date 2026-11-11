@@ -183,13 +183,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onDealerLoginSuccess }) 
               Wholesale accounts are created exclusively by the Juci Cool Administration. If you are a supermarket, kirana store, or distributor and need login credentials, contact our wholesale desk:
             </p>
             <a
-              href="https://api.whatsapp.com/send?phone=919393122122&text=Hello%20Juci%20Cool,%20I%20would%20like%20to%20request%20dealer%20login%20credentials%20for%20my%20store."
+              href="https://api.whatsapp.com/send?phone=919391122122&text=Hello%20Juci%20Cool,%20I%20would%20like%20to%20request%20dealer%20login%20credentials%20for%20my%20store."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#138443] hover:underline pt-1"
             >
               <PhoneCall className="w-3.5 h-3.5 text-[#25D366]" />
-              <span>Contact Admin on WhatsApp (+91 9393122122)</span>
+              <span>Contact Admin on WhatsApp (+91 9391122122)</span>
             </a>
           </div>
         </div>

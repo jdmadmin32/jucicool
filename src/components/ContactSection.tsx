@@ -27,7 +27,7 @@ export const ContactSection: React.FC = () => {
       '━━━━━━━━━━━━━━━━━━━━━',
     ].join('\n');
 
-    const waUrl = `https://api.whatsapp.com/send?phone=919393122122&text=${encodeURIComponent(waText)}`;
+    const waUrl = `https://api.whatsapp.com/send?phone=919391122122&text=${encodeURIComponent(waText)}`;
     try {
       window.open(waUrl, '_blank');
     } catch {
@@ -83,7 +83,7 @@ export const ContactSection: React.FC = () => {
 
               {/* Phone / WhatsApp */}
               <a
-                href="https://api.whatsapp.com/send?phone=919393122122"
+                href="https://api.whatsapp.com/send?phone=919391122122"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-4 rounded-2xl bg-white border border-[#E6EBDD] shadow-sm flex items-start gap-3 active:scale-[0.98] transition-transform hover:border-[#138443]"
@@ -94,8 +94,8 @@ export const ContactSection: React.FC = () => {
                 <div className="min-w-0">
                   <h4 className="font-bold text-xs sm:text-sm text-[#183D2B]">Call / WhatsApp</h4>
                   <p className="text-[11px] sm:text-xs text-[#68756B] mt-0.5">
-                    Orders & WhatsApp: <span className="font-bold text-[#138443]">+91 9393122122</span><br />
-                    Direct Contact: <span className="font-semibold text-[#138443]">9393122122</span>
+                    Orders & WhatsApp: <span className="font-bold text-[#138443]">+91 9391122122</span><br />
+                    Direct Contact: <span className="font-semibold text-[#138443]">9391122122</span>
                   </p>
                 </div>
               </a>

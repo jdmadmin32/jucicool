@@ -56,7 +56,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
     fee: number,
     finalTotal: number
   ) => {
-    const whatsappNumber = '919393122122';
+    const whatsappNumber = '919391122122';
 
     const itemsSummary = currentItems.map((it, idx) => {
       const uPrice = getItemPrice(it.product);
@@ -181,7 +181,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
     onOrderSuccess(orderNumber);
     setLoading(false);
 
-    // Redirect to WhatsApp with number 9393122122
+    // Redirect to WhatsApp with number 9391122122
     try {
       const win = window.open(whatsappUrl, '_blank');
       if (!win || win.closed || typeof win.closed === 'undefined') {
@@ -208,7 +208,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
               <h2 className="text-xl font-bold text-[#183D2B] font-poppins">
                 {isDealerRetailer ? 'Dealer Order via WhatsApp' : 'Order via WhatsApp / Direct Delivery'}
               </h2>
-              <p className="text-xs text-[#68756B]">Direct dispatch to WhatsApp (+91 9393122122) • Telangana & AP</p>
+              <p className="text-xs text-[#68756B]">Direct dispatch to WhatsApp (+91 9391122122) • Telangana & AP</p>
             </div>
           </div>
           <button
@@ -231,7 +231,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
                 Order Submitted & Redirected to WhatsApp!
               </h3>
               <p className="text-sm text-[#68756B] max-w-md mx-auto">
-                We've sent your order details to Juci Cool on WhatsApp (<strong className="text-[#138443]">+91 9393122122</strong>). If WhatsApp did not open automatically, tap the button below.
+                We've sent your order details to Juci Cool on WhatsApp (<strong className="text-[#138443]">+91 9391122122</strong>). If WhatsApp did not open automatically, tap the button below.
               </p>
 
               {/* Direct Open WhatsApp Button */}
@@ -243,7 +243,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
                   className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/30 transition-all transform hover:scale-105 active:scale-95"
                 >
                   <MessageCircle className="w-5 h-5 fill-white text-[#25D366]" />
-                  <span>Open WhatsApp (+91 9393122122)</span>
+                  <span>Open WhatsApp (+91 9391122122)</span>
                   <ExternalLink className="w-4 h-4 opacity-80" />
                 </a>
               </div>
@@ -299,7 +299,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
                 <div className="text-xs">
                   <span className="font-bold text-[#183D2B] block">Direct WhatsApp Order Confirmation</span>
                   <p className="text-[#68756B] mt-0.5 leading-relaxed">
-                    When you click submit, your selected items and quantities will be sent directly to our dispatch desk on WhatsApp (<strong>+91 9393122122</strong>) for immediate delivery coordination. No advance online payment needed.
+                    When you click submit, your selected items and quantities will be sent directly to our dispatch desk on WhatsApp (<strong>+91 9391122122</strong>) for immediate delivery coordination. No advance online payment needed.
                   </p>
                 </div>
               </div>
@@ -427,7 +427,7 @@ export const RetailCheckoutModal: React.FC<RetailCheckoutModalProps> = ({
                 ) : (
                   <>
                     <MessageCircle className="w-5 h-5 fill-white text-[#138443]" />
-                    <span>Submit Order & Open in WhatsApp (+91 9393122122)</span>
+                    <span>Submit Order & Open in WhatsApp (+91 9391122122)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
