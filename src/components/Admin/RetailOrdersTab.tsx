@@ -10,10 +10,19 @@ import {
   PhoneCall,
   Loader2,
   RefreshCw,
-  X
+  X,
+  Trash2,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { RetailOrder } from '../../types';
-import { fetchAdminRetailOrders, fetchAdminRetailOrderById, updateRetailOrderStatus } from '../../services/api';
+import {
+  fetchAdminRetailOrders,
+  fetchAdminRetailOrderById,
+  updateRetailOrderStatus,
+  deleteAdminRetailOrder
+} from '../../services/api';
+import { SecurityActionModal } from './DeleteConfirmationModal';
 
 export const RetailOrdersTab: React.FC = () => {
   const [orders, setOrders] = useState<RetailOrder[]>([]);
@@ -27,6 +36,12 @@ export const RetailOrdersTab: React.FC = () => {
   const [statusDraft, setStatusDraft] = useState('');
   const [paymentDraft, setPaymentDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
+
+  // Password Security Modal States
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [securityAction, setSecurityAction] = useState<'update' | 'delete'>('update');
+  const [targetOrderForDelete, setTargetOrderForDelete] = useState<{ id: number; number: string; customer: string } | null>(null);
+  const [isProcessingSecurityAction, setIsProcessingSecurityAction] = useState(false);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -56,8 +71,15 @@ export const RetailOrdersTab: React.FC = () => {
     }
   };
 
-  const handleSaveStatus = async () => {
+  const promptUpdateStatus = () => {
     if (!selectedOrderDetails) return;
+    setSecurityAction('update');
+    setSecurityModalOpen(true);
+  };
+
+  const handleAuthorizedUpdateStatus = async () => {
+    if (!selectedOrderDetails) return;
+    setIsProcessingSecurityAction(true);
     setIsUpdating(true);
     try {
       await updateRetailOrderStatus(selectedOrderDetails.order.id, {
@@ -66,13 +88,40 @@ export const RetailOrdersTab: React.FC = () => {
         notes: notesDraft,
       });
       await loadOrders();
-      // refresh details
       const refreshed = await fetchAdminRetailOrderById(selectedOrderDetails.order.id);
       setSelectedOrderDetails(refreshed);
+      setSecurityModalOpen(false);
+      alert('Retail order updated successfully with admin authorization!');
     } catch (err: any) {
-      alert('Failed to update status: ' + err.message);
+      alert('Failed to update status: ' + (err.message || 'Error'));
     } finally {
       setIsUpdating(false);
+      setIsProcessingSecurityAction(false);
+    }
+  };
+
+  const promptDeleteOrder = (order: { id: number; number: string; customer: string }) => {
+    setTargetOrderForDelete(order);
+    setSecurityAction('delete');
+    setSecurityModalOpen(true);
+  };
+
+  const handleAuthorizedDeleteOrder = async () => {
+    if (!targetOrderForDelete) return;
+    setIsProcessingSecurityAction(true);
+    try {
+      await deleteAdminRetailOrder(targetOrderForDelete.id);
+      if (selectedOrderDetails && selectedOrderDetails.order.id === targetOrderForDelete.id) {
+        setSelectedOrderDetails(null);
+      }
+      setSecurityModalOpen(false);
+      setTargetOrderForDelete(null);
+      await loadOrders();
+      alert(`Retail order #${targetOrderForDelete.number} permanently deleted.`);
+    } catch (err: any) {
+      alert('Failed to delete order: ' + (err.message || 'Error'));
+    } finally {
+      setIsProcessingSecurityAction(false);
     }
   };
 
@@ -227,13 +276,22 @@ export const RetailOrdersTab: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenDetails(o.id)}
-                        className="p-1.5 rounded-xl border border-[#E6EBDD] text-[#138443] hover:bg-[#F4F8F0] shadow-sm"
-                        title="View & Manage Order"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenDetails(o.id)}
+                          className="p-1.5 rounded-xl border border-[#E6EBDD] text-[#138443] hover:bg-[#F4F8F0] shadow-sm"
+                          title="View & Manage Order"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => promptDeleteOrder({ id: o.id, number: o.order_number, customer: o.customer_name })}
+                          className="p-1.5 rounded-xl border border-red-100 text-red-500 hover:text-red-700 hover:bg-red-50 shadow-sm"
+                          title="Delete retail order (Requires admin password)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -368,14 +426,27 @@ export const RetailOrdersTab: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex justify-end pt-1">
+                <div className="flex items-center justify-between pt-1">
                   <button
-                    onClick={handleSaveStatus}
+                    type="button"
+                    onClick={() => promptDeleteOrder({
+                      id: selectedOrderDetails.order.id,
+                      number: selectedOrderDetails.order.order_number,
+                      customer: selectedOrderDetails.order.customer_name
+                    })}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Order</span>
+                  </button>
+
+                  <button
+                    onClick={promptUpdateStatus}
                     disabled={isUpdating}
                     className="px-5 py-2 rounded-xl text-xs font-bold bg-[#138443] hover:bg-[#0d6131] text-white flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                   >
-                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                    <span>Save Order Updates</span>
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                    <span>Save Order Updates (Requires Password)</span>
                   </button>
                 </div>
               </div>
@@ -398,6 +469,30 @@ export const RetailOrdersTab: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Security Action Authorization Modal */}
+      <SecurityActionModal
+        isOpen={securityModalOpen}
+        actionType={securityAction}
+        title={securityAction === 'delete' ? 'Confirm Retail Order Deletion' : 'Authorize Retail Order Update'}
+        itemName={
+          securityAction === 'delete'
+            ? `Order #${targetOrderForDelete?.number || ''} (${targetOrderForDelete?.customer || ''})`
+            : `Order #${selectedOrderDetails?.order?.order_number || ''} (${selectedOrderDetails?.order?.customer_name || ''})`
+        }
+        itemType="Retail Order"
+        description={
+          securityAction === 'delete'
+            ? 'You are about to permanently delete this customer retail order and its transaction history.'
+            : `You are about to update order fulfillment to "${statusDraft}" and payment status to "${paymentDraft}".`
+        }
+        confirmButtonText={securityAction === 'delete' ? 'Delete Order Permanently' : 'Authorize & Save Updates'}
+        onClose={() => {
+          setSecurityModalOpen(false);
+          setTargetOrderForDelete(null);
+        }}
+        onConfirm={securityAction === 'delete' ? handleAuthorizedDeleteOrder : handleAuthorizedUpdateStatus}
+        isLoading={isProcessingSecurityAction}
+      />
     </div>
   );
 };

@@ -1185,6 +1185,23 @@ app.patch('/api/admin/retail-orders/:id', authenticateToken, requireAdmin, (req:
   res.json({ message: 'Order updated successfully' });
 });
 
+app.delete('/api/admin/retail-orders/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const orderId = req.params.id;
+  const currentOrder = db.prepare('SELECT * FROM retail_orders WHERE id = ?').get(orderId) as any;
+  if (!currentOrder) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  // Delete associated items and status history
+  db.prepare('DELETE FROM retail_order_items WHERE order_id = ?').run(orderId);
+  db.prepare("DELETE FROM status_history WHERE entity_type = 'retail_order' AND entity_id = ?").run(orderId);
+  db.prepare('DELETE FROM retail_orders WHERE id = ?').run(orderId);
+
+  logAction('DELETE_RETAIL_ORDER', req.user!.fullName, `Permanently deleted retail order #${currentOrder.order_number}`);
+
+  res.json({ message: 'Order deleted successfully' });
+});
+
 // 3. Bulk Enquiries Management
 app.get('/api/admin/bulk-enquiries', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   const { status, search } = req.query;
@@ -1856,6 +1873,51 @@ app.delete('/api/admin/dealers/:id', authenticateToken, requireAdmin, (req: Auth
   db.prepare('DELETE FROM users WHERE id = ?').run(dealerId);
   logAction('DELETE_DEALER', req.user!.fullName, `Deleted dealer account #${dealerId} (${dealer.email})`);
   res.json({ message: 'Dealer account deleted successfully' });
+});
+
+app.patch('/api/admin/dealers/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  const dealerId = req.params.id;
+  const dealer = db.prepare('SELECT * FROM users WHERE id = ?').get(dealerId) as any;
+  if (!dealer) {
+    return res.status(404).json({ error: 'Dealer account not found' });
+  }
+
+  const { businessName, fullName, phone, city, state, password } = req.body;
+  const updates: string[] = [];
+  const params: any[] = [];
+
+  if (businessName !== undefined) {
+    updates.push('business_name = ?');
+    params.push(businessName);
+  }
+  if (fullName !== undefined) {
+    updates.push('full_name = ?');
+    params.push(fullName);
+  }
+  if (phone !== undefined) {
+    updates.push('phone = ?');
+    params.push(phone);
+  }
+  if (city !== undefined) {
+    updates.push('city = ?');
+    params.push(city);
+  }
+  if (state !== undefined) {
+    updates.push('state = ?');
+    params.push(state);
+  }
+  if (password) {
+    updates.push('password = ?');
+    params.push(bcrypt.hashSync(password, 10));
+  }
+
+  if (updates.length > 0) {
+    params.push(dealerId);
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  logAction('UPDATE_DEALER', req.user!.fullName, `Updated dealer account #${dealerId} (${dealer.email})`);
+  res.json({ message: 'Dealer account updated successfully' });
 });
 
 // 7. Centralized Customer Directory

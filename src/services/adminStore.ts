@@ -175,6 +175,12 @@ export function updateLocalRetailOrderStatus(id: number, data: { orderStatus?: s
   return orders[idx];
 }
 
+export function deleteLocalRetailOrder(id: number): void {
+  const orders = getStored<RetailOrder[]>(STORAGE_KEYS.RETAIL_ORDERS, INITIAL_RETAIL_ORDERS);
+  const updated = orders.filter(o => o.id !== Number(id));
+  setStored(STORAGE_KEYS.RETAIL_ORDERS, updated);
+}
+
 // ----------------------------------------------------
 // BULK ENQUIRIES STORE
 // ----------------------------------------------------
@@ -433,6 +439,18 @@ export function convertLocalQuotationToOrder(quotationId: number, orderData: any
   return newOrder;
 }
 
+export function deleteLocalWholesaleOrder(id: number): void {
+  const orders = getStored<WholesaleOrder[]>(STORAGE_KEYS.WHOLESALE_ORDERS, INITIAL_WHOLESALE_ORDERS);
+  const updated = orders.filter(o => o.id !== Number(id));
+  setStored(STORAGE_KEYS.WHOLESALE_ORDERS, updated);
+}
+
+export function deleteLocalBulkEnquiry(id: number): void {
+  const enquiries = getStored<BulkEnquiry[]>(STORAGE_KEYS.BULK_ENQUIRIES, INITIAL_BULK_ENQUIRIES);
+  const updated = enquiries.filter(e => e.id !== Number(id));
+  setStored(STORAGE_KEYS.BULK_ENQUIRIES, updated);
+}
+
 // ----------------------------------------------------
 // WHOLESALE ORDERS STORE
 // ----------------------------------------------------
@@ -556,6 +574,49 @@ export function createLocalDealer(data: any): DealerRecord {
 export function deleteLocalDealer(id: number): void {
   const dealers = getLocalDealers().filter(d => d.id !== Number(id));
   setStored(STORAGE_KEYS.DEALERS, dealers);
+}
+
+export function updateLocalDealer(
+  id: number,
+  data: {
+    businessName?: string;
+    fullName?: string;
+    phone?: string;
+    city?: string;
+    state?: string;
+    password?: string;
+  }
+): DealerRecord | null {
+  const dealers = getLocalDealers();
+  const idx = dealers.findIndex(d => d.id === Number(id));
+  if (idx === -1) return null;
+
+  if (data.businessName !== undefined) {
+    dealers[idx].businessName = data.businessName;
+    dealers[idx].business_name = data.businessName;
+  }
+  if (data.fullName !== undefined) {
+    dealers[idx].fullName = data.fullName;
+    dealers[idx].full_name = data.fullName;
+  }
+  if (data.phone !== undefined) {
+    dealers[idx].phone = data.phone;
+  }
+  if (data.city !== undefined) {
+    dealers[idx].city = data.city;
+  }
+  if (data.state !== undefined) {
+    dealers[idx].state = data.state;
+  }
+  if (data.password) {
+    dealers[idx].password = data.password;
+    if (dealers[idx].email) {
+      recordDealerPassword(dealers[idx].email, data.password);
+    }
+  }
+
+  setStored(STORAGE_KEYS.DEALERS, dealers);
+  return dealers[idx];
 }
 
 // ----------------------------------------------------

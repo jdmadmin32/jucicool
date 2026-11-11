@@ -20,11 +20,13 @@ import {
   Eye,
   EyeOff,
   Key,
-  Check
+  Check,
+  Edit
 } from 'lucide-react';
 import { DealerRecord } from '../../types';
-import { fetchAdminDealers, createAdminDealer, deleteAdminDealer } from '../../services/api';
+import { fetchAdminDealers, createAdminDealer, deleteAdminDealer, updateAdminDealer } from '../../services/api';
 import { getStoredDealerPassword } from '../../services/adminStore';
+import { SecurityActionModal } from './DeleteConfirmationModal';
 
 export const DealersTab: React.FC = () => {
   const [dealers, setDealers] = useState<DealerRecord[]>([]);
@@ -38,7 +40,7 @@ export const DealersTab: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // New Dealer Form
+  // New / Edit Dealer Form
   const [storeName, setStoreName] = useState('');
   const [contactName, setContactName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,6 +48,16 @@ export const DealersTab: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('Hyderabad');
   const [state, setState] = useState('Telangana');
+
+  // Edit Dealer State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingDealer, setEditingDealer] = useState<DealerRecord | null>(null);
+
+  // Security Confirmation Modal State (Requires Password: Mango@123)
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [securityAction, setSecurityAction] = useState<'delete' | 'update'>('delete');
+  const [targetDealerForSecurity, setTargetDealerForSecurity] = useState<DealerRecord | null>(null);
+  const [isProcessingSecurityAction, setIsProcessingSecurityAction] = useState(false);
 
   // Recently Created Credentials Banner
   const [recentlyCreated, setRecentlyCreated] = useState<{
@@ -152,17 +164,72 @@ export const DealersTab: React.FC = () => {
     }
   };
 
-  const handleDeleteDealer = async (id: number, dealerEmail: string) => {
-    if (!window.confirm(`Are you sure you want to delete dealer account (${dealerEmail})? They will no longer be able to log in.`)) {
-      return;
-    }
+  const handleOpenEditModal = (d: DealerRecord) => {
+    setEditingDealer(d);
+    setStoreName(d.business_name || d.businessName || '');
+    setContactName(d.full_name || d.fullName || '');
+    setEmail(d.email || '');
+    setPassword(d.password || getStoredDealerPassword(d.email) || '');
+    setPhone(d.phone || '');
+    setCity(d.city || 'Hyderabad');
+    setState(d.state || 'Telangana');
+    setModalError(null);
+    setIsEditModalOpen(true);
+  };
 
+  const promptUpdateDealer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDealer) return;
+    setTargetDealerForSecurity(editingDealer);
+    setSecurityAction('update');
+    setSecurityModalOpen(true);
+  };
+
+  const handleAuthorizedUpdateDealer = async () => {
+    if (!targetDealerForSecurity) return;
+    setIsProcessingSecurityAction(true);
     try {
-      await deleteAdminDealer(id);
-      setSuccessMsg(`Dealer ${dealerEmail} deleted successfully.`);
-      loadDealers();
+      await updateAdminDealer(targetDealerForSecurity.id, {
+        businessName: storeName.trim(),
+        fullName: contactName.trim(),
+        phone: phone.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        password: password.trim() || undefined,
+      });
+
+      setSuccessMsg(`Dealer ${targetDealerForSecurity.email} updated successfully!`);
+      setIsEditModalOpen(false);
+      setSecurityModalOpen(false);
+      setEditingDealer(null);
+      setTargetDealerForSecurity(null);
+      await loadDealers();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete dealer');
+      alert('Failed to update dealer: ' + (err.message || 'Error'));
+    } finally {
+      setIsProcessingSecurityAction(false);
+    }
+  };
+
+  const promptDeleteDealer = (d: DealerRecord) => {
+    setTargetDealerForSecurity(d);
+    setSecurityAction('delete');
+    setSecurityModalOpen(true);
+  };
+
+  const handleAuthorizedDeleteDealer = async () => {
+    if (!targetDealerForSecurity) return;
+    setIsProcessingSecurityAction(true);
+    try {
+      await deleteAdminDealer(targetDealerForSecurity.id);
+      setSuccessMsg(`Dealer account (${targetDealerForSecurity.email}) deleted successfully.`);
+      setSecurityModalOpen(false);
+      setTargetDealerForSecurity(null);
+      await loadDealers();
+    } catch (err: any) {
+      alert('Failed to delete dealer: ' + (err.message || 'Error'));
+    } finally {
+      setIsProcessingSecurityAction(false);
     }
   };
 
@@ -442,9 +509,16 @@ export const DealersTab: React.FC = () => {
                           )}
                         </button>
                         <button
-                          onClick={() => handleDeleteDealer(d.id, d.email)}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Delete dealer account"
+                          onClick={() => handleOpenEditModal(d)}
+                          className="p-1.5 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200"
+                          title="Edit dealer account (Requires admin password to save)"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => promptDeleteDealer(d)}
+                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200"
+                          title="Delete dealer account (Requires admin password)"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -625,6 +699,178 @@ export const DealersTab: React.FC = () => {
           </div>
         </div>
       )}
+      {/* ================= MODAL: EDIT DEALER ================= */}
+      {isEditModalOpen && editingDealer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E6EBDD] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E6EBDD]">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-[#138443] rounded-xl">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#183D2B]">Edit Dealer Account</h3>
+                  <p className="text-[11px] text-[#68756B]">Update profile or reset password (password required to authorize)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingDealer(null);
+                }}
+                className="p-1.5 text-slate-400 hover:text-[#183D2B] rounded-full hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={promptUpdateDealer} className="space-y-3.5">
+              {/* Store Name */}
+              <div>
+                <label className="block text-xs font-bold text-[#183D2B] mb-1">
+                  Dealer Store / Business Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Balaji Supermarket & Agency"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#E6EBDD] focus:outline-none focus:border-[#138443]"
+                  />
+                  <Store className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              {/* Contact Person Name */}
+              <div>
+                <label className="block text-xs font-semibold text-[#183D2B] mb-1">
+                  Contact Person Full Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rajesh Sharma"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-[#E6EBDD] focus:outline-none focus:border-[#138443]"
+                />
+              </div>
+
+              {/* Email (Readonly) */}
+              <div>
+                <label className="block text-xs font-bold text-[#183D2B] mb-1">
+                  Dealer Email ID (Login Username)
+                </label>
+                <input
+                  type="email"
+                  disabled
+                  value={email}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-mono"
+                />
+                <p className="text-[10px] text-[#68756B] mt-0.5">Dealer email ID is permanent.</p>
+              </div>
+
+              {/* Password */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-[#183D2B]">
+                    Assigned Dealer Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPassword(`Juci${Math.floor(1000 + Math.random() * 9000)}#`)}
+                    className="text-[10px] text-[#138443] font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Generate New</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter security password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#E6EBDD] font-mono font-bold text-[#183D2B] bg-amber-50/50 focus:outline-none focus:border-[#138443]"
+                  />
+                  <Key className="w-4 h-4 text-amber-600 absolute left-3 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              {/* Phone & City Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#183D2B] mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[#E6EBDD] focus:outline-none focus:border-[#138443]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#183D2B] mb-1">
+                    City / Location
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Hyderabad"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[#E6EBDD] focus:outline-none focus:border-[#138443]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E6EBDD]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingDealer(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-[#68756B] hover:text-[#183D2B]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-[#138443] hover:bg-[#0d6131] text-white shadow-md flex items-center gap-1.5 transition-all"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Authorize & Update</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Security Action Authorization Modal */}
+      <SecurityActionModal
+        isOpen={securityModalOpen}
+        actionType={securityAction}
+        title={securityAction === 'delete' ? 'Confirm Dealer Account Deletion' : 'Authorize Dealer Account Update'}
+        itemName={targetDealerForSecurity ? `${targetDealerForSecurity.business_name || targetDealerForSecurity.businessName || 'Dealer'} (${targetDealerForSecurity.email})` : ''}
+        itemType="Dealer Account"
+        description={
+          securityAction === 'delete'
+            ? `You are about to permanently remove wholesale portal access for "${targetDealerForSecurity?.email}".`
+            : `You are about to update credentials and business details for "${targetDealerForSecurity?.email}".`
+        }
+        confirmButtonText={securityAction === 'delete' ? 'Delete Dealer Account' : 'Confirm & Update Dealer'}
+        onClose={() => {
+          setSecurityModalOpen(false);
+          setTargetDealerForSecurity(null);
+        }}
+        onConfirm={securityAction === 'delete' ? handleAuthorizedDeleteDealer : handleAuthorizedUpdateDealer}
+        isLoading={isProcessingSecurityAction}
+      />
     </div>
   );
 };

@@ -53,11 +53,11 @@ export function seedData() {
     VALUES (?, ?, ?, ?, ?)
   `);
 
-  insertCat.run('Fruit Juices', 'fruit-juices', 'Refreshing fruit-based juices made from real pulp — mango, guava, lychee and more.', '/images/products/mango-pouch.png', 1);
-  insertCat.run('Carbonated Drinks', 'carbonated-drinks', 'Fizzy, refreshing carbonated beverages in exciting flavors for every mood.', '/images/products/mango-bottle.png', 2);
-  insertCat.run('Packaged Drinking Water', 'packaged-water', 'Pure, clean and safe packaged drinking water — ideal for homes and businesses.', '/images/products/mineral-water.png', 3);
-  insertCat.run('Glucose Drinks', 'glucose-drinks', 'Instant energy-replenishing glucose drinks to keep you active and refreshed.', '/images/products/fruit-jelly.png', 4);
-  insertCat.run('Candies', 'candies', 'Fun, flavourful candies in mango, guava and assorted fruit flavors loved by all ages.', '/images/products/flavored-candy.png', 5);
+  insertCat.run('Fruit Drinks', 'fruit-drinks', 'Refreshing fruit goodness in every sip with authentic fruit pulp.', '/images/products/mango-pouch.png', 1);
+  insertCat.run('Mango Drinks', 'mango-drinks', 'Rich taste. Pure mango. King of fruits in delicious bottles and pouches.', '/images/products/mango-bottle.png', 2);
+  insertCat.run('Flavored Candy', 'candy', 'Fun flavors and happy moments with intense mango and guava candies.', '/images/products/flavored-candy.png', 3);
+  insertCat.run('Fruit Jelly', 'jelly', 'Fruity bites of happiness with luscious assorted real fruit jellies.', '/images/products/fruit-jelly.png', 4);
+  insertCat.run('Natural Mineral Water', 'mineral-water', 'Pure, fresh, natural Himalayan-quality hydration.', '/images/products/mineral-water.png', 5);
 
   // 2. Verified Products
   const insertProd = db.prepare(`

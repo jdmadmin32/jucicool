@@ -29,6 +29,7 @@ import {
   getLocalRetailOrders,
   getLocalRetailOrderById,
   updateLocalRetailOrderStatus,
+  deleteLocalRetailOrder,
   getLocalBulkEnquiries,
   getLocalBulkEnquiryById,
   updateLocalBulkEnquiryStatus,
@@ -40,6 +41,7 @@ import {
   updateLocalWholesaleOrderStatus,
   getLocalDealers,
   createLocalDealer,
+  updateLocalDealer,
   deleteLocalDealer,
   getDealerPasswordMap,
   recordDealerPassword,
@@ -518,6 +520,25 @@ export async function updateRetailOrderStatus(
 
   const updated = updateLocalRetailOrderStatus(id, data);
   return { success: true, order: updated };
+}
+
+export async function deleteAdminRetailOrder(id: number): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/retail-orders/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() },
+    });
+
+    if (res.ok) {
+      deleteLocalRetailOrder(id);
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('deleteAdminRetailOrder server unavailable, deleting locally:', err);
+  }
+
+  deleteLocalRetailOrder(id);
+  return { success: true };
 }
 
 // ----------------------------------------------------
@@ -1228,6 +1249,39 @@ export async function deleteAdminDealer(id: number): Promise<any> {
 
   deleteLocalDealer(id);
   return { success: true };
+}
+
+export async function updateAdminDealer(
+  id: number,
+  payload: {
+    businessName?: string;
+    fullName?: string;
+    phone?: string;
+    city?: string;
+    state?: string;
+    password?: string;
+  }
+): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/dealers/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      updateLocalDealer(id, payload);
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('updateAdminDealer server unavailable, updating locally:', err);
+  }
+
+  const updated = updateLocalDealer(id, payload);
+  return { success: true, dealer: updated };
 }
 
 
